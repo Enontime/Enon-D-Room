@@ -2,13 +2,11 @@
 import { useEffect, useRef, useState } from 'react';
 import {
   Home,
-  ArrowUpRight,
   Sun,
   Moon,
-  Monitor,
-  NotebookPen,
   RotateCcw,
   Keyboard,
+  MousePointer2,
 } from 'lucide-react';
 import {
   Dialog,
@@ -21,27 +19,29 @@ import { TerminalApp } from '@/components/apps/terminal';
 import { NotesApp } from '@/components/apps/notes';
 import { objects, type ObjectId } from '@/lib/world/objects';
 import type { WorldController } from '@/lib/world/scene';
+import type { ControlMode } from '@/lib/player/controls';
 
 export default function HomePage() {
-  const mount = useRef<HTMLDivElement>(null);
-  const world = useRef<WorldController | null>(null);
-  const [ready, setReady] = useState(false);
-  const [error, setError] = useState('');
+  const mount = useRef<HTMLDivElement>(null),
+    world = useRef<WorldController | null>(null);
+  const [ready, setReady] = useState(false),
+    [error, setError] = useState('');
   const [nearby, setNearby] = useState<ObjectId | null>(null);
   const [active, setActive] = useState<ObjectId | 'help' | null>(null);
-  const [night, setNight] = useState(false);
-  const [walking, setWalking] = useState(false);
-  const [target, setTarget] = useState<ObjectId | null>(null);
+  const [night, setNight] = useState(false),
+    [walking, setWalking] = useState(false);
+  const [mode, setMode] = useState<ControlMode>('idle'),
+    [hasEntered, setHasEntered] = useState(false);
   const [clock, setClock] = useState('--:--');
-  const [markers, setMarkers] = useState<
-    Array<{ id: ObjectId; x: number; y: number }>
-  >([]);
-  const activeRef = useRef(active);
-  const openRef = useRef<(id: ObjectId) => void>(() => {});
+  const activeRef = useRef(active),
+    openRef = useRef<(id: ObjectId) => void>(() => {});
   openRef.current = (id) => {
     if (activeRef.current) return;
     if (id === 'light') setNight((value) => !value);
-    else setActive(id);
+    else {
+      world.current?.setPaused(true);
+      setActive(id);
+    }
   };
   useEffect(() => {
     let disposed = false;
@@ -52,8 +52,10 @@ export default function HomePage() {
           onNearby: setNearby,
           onInteract: (id) => openRef.current(id),
           onWalking: setWalking,
-          onMarkers: setMarkers,
-          onArrive: () => setTarget(null),
+          onControlChange: (value) => {
+            setMode(value);
+            if (value !== 'idle') setHasEntered(true);
+          },
         });
         setReady(true);
       })
@@ -97,16 +99,11 @@ export default function HomePage() {
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
   }, []);
-  const goTo = (id: ObjectId) => {
-    world.current?.goTo(id);
-    setTarget(id);
-    mount.current?.focus();
-  };
   const currentObject = nearby
     ? objects.find((item) => item.id === nearby)
     : null;
   return (
-    <main className={`home-shell ${night ? 'night' : ''}`}>
+    <main className={`home-shell fps-shell ${night ? 'night' : ''}`}>
       <header className="topbar">
         <a href="/" className="brand" aria-label="Enon Home 首页">
           <span className="brand-icon">
@@ -118,7 +115,8 @@ export default function HomePage() {
           </span>
         </a>
         <div className="header-center">
-          <span className="status-dot" /> 我的数字小天地
+          <span className="status-dot" />
+          我的数字小天地
         </div>
         <div className="header-right">
           <span className="local-time">
@@ -133,15 +131,18 @@ export default function HomePage() {
           </button>
         </div>
       </header>
-      <section className="world-section" aria-label="可探索的 3D 房间">
+      <section className="world-section" aria-label="第一人称封闭房间">
+        <div
+          ref={mount}
+          className="world-canvas"
+          tabIndex={0}
+          aria-label="第一人称房间：点击进入，鼠标环顾，WASD 移动，IJKL 转动视角，E 交互，Esc 释放鼠标。"
+        />
         <div className="room-heading">
           <div className="eyebrow">
             <span className="tiny-square" /> ROOM 001
           </div>
-          <h1>
-            欢迎回家，Enon<span>。</span>
-          </h1>
-          <p>一个房间，一些想法，无限可能。</p>
+          <h1>我的房间</h1>
         </div>
         <div className="room-indicator">
           <span className="status-dot" />
@@ -149,53 +150,42 @@ export default function HomePage() {
           <span className="indicator-line" />
           {night ? <Moon size={16} /> : <Sun size={18} />}
         </div>
-        <div
-          ref={mount}
-          className="world-canvas"
-          tabIndex={0}
-          aria-label="房间：WASD 或方向键移动，E 交互。也可以点击地面行走。"
-        />
         {(!ready || error) && (
           <div className="world-loading" role="status">
             {error || '正在打开家门…'}
           </div>
         )}
-        <div className="object-markers">
-          {markers.map((marker) => (
-            <button
-              key={marker.id}
-              className={`object-marker ${nearby === marker.id ? 'is-near' : ''} ${target === marker.id ? 'is-target' : ''}`}
-              style={{ left: marker.x, top: marker.y }}
-              onClick={() => goTo(marker.id)}
-              aria-label={`走向${objects.find((obj) => obj.id === marker.id)?.name}`}
-            >
-              <span className="marker-symbol">
-                {marker.id === 'terminal' ? (
-                  <Monitor size={15} />
-                ) : marker.id === 'notes' ? (
-                  <NotebookPen size={15} />
-                ) : (
-                  <Sun size={15} />
-                )}
-              </span>
-              <span>{objects.find((obj) => obj.id === marker.id)?.name}</span>
-              <ArrowUpRight size={12} />
+        {ready && !error && (
+          <div
+            className={`crosshair ${currentObject ? 'can-interact' : ''}`}
+            aria-hidden="true"
+          />
+        )}
+        {ready && !error && mode === 'idle' && !active && (
+          <div className="entry-prompt">
+            <div className="eyebrow">ENON HOME</div>
+            <h2>{hasEntered ? '继续探索' : '欢迎回家。'}</h2>
+            <p>从自己的视线出发，走进这个房间。</p>
+            <button onClick={() => world.current?.enter()}>
+              <MousePointer2 size={18} />
+              {hasEntered ? '继续探索' : '进入房间'}
             </button>
-          ))}
-        </div>
-        <div className="world-caption">
-          <span className="small-cross">+</span>
-          <span>THE WORLD IS YOUR INTERFACE</span>
-          <span className="small-cross">+</span>
-        </div>
+            <span>WASD 行走 · 鼠标环顾 · E 使用物品</span>
+          </div>
+        )}
+        {mode === 'drag' && !active && (
+          <div className="look-hint">
+            按住鼠标或触屏拖动环顾 · IJKL 也可转动视角
+          </div>
+        )}
         <div
-          className={`interaction-prompt ${currentObject ? 'visible' : ''}`}
+          className={`interaction-prompt ${currentObject && mode !== 'idle' && !active ? 'visible' : ''}`}
           aria-live="polite"
         >
-          {currentObject && (
+          {currentObject && mode !== 'idle' && !active && (
             <>
               <div>
-                <span className="prompt-kicker">就在身边</span>
+                <span className="prompt-kicker">正在看向</span>
                 <strong>{currentObject.name}</strong>
                 <span className="prompt-description">
                   {currentObject.description}
@@ -208,27 +198,30 @@ export default function HomePage() {
             </>
           )}
         </div>
-        <div className="touch-controls" aria-label="触屏移动">
-          {(['up', 'left', 'down', 'right'] as const).map(
-            (direction, index) => (
-              <button
-                key={direction}
-                className={`direction-${direction}`}
-                aria-label={`向${['上', '左', '下', '右'][index]}移动`}
-                onPointerDown={(event) => {
-                  event.currentTarget.setPointerCapture(event.pointerId);
-                  world.current?.setTouch(direction, true);
-                }}
-                onPointerUp={() => world.current?.setTouch(direction, false)}
-                onPointerCancel={() =>
-                  world.current?.setTouch(direction, false)
-                }
-              >
-                {['↑', '←', '↓', '→'][index]}
-              </button>
-            ),
-          )}
-        </div>
+        {mode !== 'idle' && !active && (
+          <div className="touch-controls" aria-label="触屏移动">
+            {(['up', 'left', 'down', 'right'] as const).map(
+              (direction, index) => (
+                <button
+                  key={direction}
+                  className={`direction-${direction}`}
+                  aria-label={`向${['前', '左', '后', '右'][index]}移动`}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    event.currentTarget.setPointerCapture(event.pointerId);
+                    world.current?.setTouch(direction, true);
+                  }}
+                  onPointerUp={() => world.current?.setTouch(direction, false)}
+                  onPointerCancel={() =>
+                    world.current?.setTouch(direction, false)
+                  }
+                >
+                  {['↑', '←', '↓', '→'][index]}
+                </button>
+              ),
+            )}
+          </div>
+        )}
       </section>
       <footer className="bottom-bar">
         <div className="location">
@@ -237,10 +230,10 @@ export default function HomePage() {
             <strong>我的房间</strong>
             <span>
               {walking
-                ? '散步中…'
-                : target
-                  ? '正在走近…'
-                  : '随处走走，发现一点什么。'}
+                ? '行走中…'
+                : mode === 'idle'
+                  ? '点击进入，开始探索。'
+                  : '靠近物品，用准星对准它。'}
             </span>
           </div>
         </div>
@@ -249,24 +242,21 @@ export default function HomePage() {
             <kbd>W</kbd>
             <kbd>A</kbd>
             <kbd>S</kbd>
-            <kbd>D</kbd> 移动
+            <kbd>D</kbd> 行走
           </span>
           <span>
-            <kbd>E</kbd> 交互
+            <MousePointer2 size={16} /> 环顾
           </span>
           <span>
-            <kbd>ESC</kbd> 返回
+            <kbd>E</kbd> 使用
+          </span>
+          <span>
+            <kbd>ESC</kbd> 鼠标
           </span>
         </div>
-        <button
-          className="reset-button"
-          onClick={() => {
-            world.current?.reset();
-            setTarget(null);
-          }}
-        >
+        <button className="reset-button" onClick={() => world.current?.reset()}>
           <RotateCcw size={16} />
-          <span>回到起点</span>
+          <span>回到门口</span>
         </button>
       </footer>
       <Dialog
@@ -311,7 +301,10 @@ export default function HomePage() {
             <div className="help-content">
               <div className="eyebrow">MAKE YOURSELF AT HOME</div>
               <h2>像在家一样，自在一点。</h2>
-              <p>你的小小分身已经在房间里。点击地面，或用键盘四处走走。</p>
+              <p>
+                你正站在房间内部。点击进入后，用鼠标环顾四周，WASD
+                沿视线方向行走。
+              </p>
               <div className="help-row">
                 <span>
                   <kbd>WASD</kbd> / <kbd>↑ ← ↓ →</kbd>
@@ -331,7 +324,9 @@ export default function HomePage() {
                 <span>返回房间</span>
               </div>
               <p className="help-note">
-                点击物品上方的标签，会自动走到它旁边。电脑打开本地终端；笔记本保存想法；落地灯切换昼夜。
+                将准星对准近处的电脑、笔记柜或落地灯，再按 E 使用。Esc
+                释放鼠标；关闭应用后，点击「继续探索」。鼠标锁定不可用时，可按住鼠标拖动，或用
+                I / J / K / L 转动视角。
               </p>
             </div>
           )}

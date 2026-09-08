@@ -1,4 +1,10 @@
 import { objects, type Point, type ObjectId } from '../world/objects.ts';
+/** Consider only the nearest opaque surface; never skip a wall to reach an object. */
+export function getFocusedObject(
+  hit: { id?: ObjectId; distance: number } | undefined,
+): ObjectId | null {
+  return hit?.id && hit.distance <= 2.5 ? hit.id : null;
+}
 export function getNearby(position: Point): ObjectId | null {
   let nearest: ObjectId | null = null,
     distance = 1.02;

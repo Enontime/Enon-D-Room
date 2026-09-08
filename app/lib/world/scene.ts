@@ -1,20 +1,28 @@
 import * as THREE from 'three';
-import { objects, type ObjectId, type Point } from './objects';
-import { canStand, findPath, movePlayer } from '@/lib/player/movement';
-import { getNearby } from '@/lib/interactions/detection';
+import { type ObjectId, type Point } from './objects';
+import { movePlayer } from '@/lib/player/movement';
+import {
+  EYE_HEIGHT,
+  START_POSE,
+  firstPersonStep,
+} from '@/lib/player/first-person';
+import {
+  createFirstPersonControls,
+  type ControlMode,
+} from '@/lib/player/controls';
+import { getFocusedObject } from '@/lib/interactions/detection';
 
 type Callbacks = {
   onNearby: (id: ObjectId | null) => void;
   onInteract: (id: ObjectId) => void;
   onWalking: (value: boolean) => void;
-  onMarkers: (value: Array<{ id: ObjectId; x: number; y: number }>) => void;
-  onArrive: () => void;
+  onControlChange: (mode: ControlMode) => void;
 };
 export type WorldController = {
   dispose: () => void;
   setPaused: (value: boolean) => void;
   setNight: (value: boolean) => void;
-  goTo: (id: ObjectId) => void;
+  enter: () => void;
   reset: () => void;
   setTouch: (direction: string, pressed: boolean) => void;
 };
@@ -24,9 +32,11 @@ export function createWorld(
   callbacks: Callbacks,
 ): WorldController {
   const scene = new THREE.Scene();
-  const camera = new THREE.OrthographicCamera(-9, 9, 6, -6, 0.1, 100);
-  camera.position.set(12, 12, 15);
-  camera.lookAt(0, 0.7, 0);
+  const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 40);
+  camera.rotation.order = 'YXZ';
+  camera.position.set(START_POSE.x, EYE_HEIGHT, START_POSE.z);
+  camera.rotation.set(START_POSE.pitch, START_POSE.yaw, 0);
+  scene.background = new THREE.Color(0x273e32);
   const renderer = new THREE.WebGLRenderer({ antialias: false, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5));
   renderer.shadowMap.enabled = true;
@@ -38,7 +48,9 @@ export function createWorld(
   const ambient = new THREE.AmbientLight(0xe4f3e8, 1.65);
   scene.add(ambient);
   const sun = new THREE.DirectionalLight(0xfff3d4, 3.1);
-  sun.position.set(-3, 11, 7);
+  sun.position.set(1.9, 2.8, -3.3);
+  sun.target.position.set(-0.5, 0.3, 2.0);
+  scene.add(sun.target);
   sun.castShadow = true;
   sun.shadow.mapSize.set(2048, 2048);
   sun.shadow.camera.left = -10;
@@ -50,6 +62,9 @@ export function createWorld(
   const lampLight = new THREE.PointLight(0xffc35d, 0, 9, 2);
   lampLight.position.set(4.1, 2.3, 2.1);
   scene.add(lampLight);
+  const ceilingLight = new THREE.PointLight(0xffe5b5, 18, 14, 2);
+  ceilingLight.position.set(0, 2.95, 0.1);
+  scene.add(ceilingLight);
   const palette = {
     wall: 0xa9cdb4,
     side: 0x92b89d,
@@ -82,6 +97,7 @@ export function createWorld(
       );
     return materials.get(color)!;
   };
+  let interactiveId: ObjectId | null = null;
   const box = (
     x: number,
     y: number,
@@ -99,6 +115,7 @@ export function createWorld(
     mesh.position.set(x, y, z);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
+    if (interactiveId) mesh.userData.interactiveId = interactiveId;
     parent.add(mesh);
     return mesh;
   };
@@ -118,6 +135,25 @@ export function createWorld(
   box(-4.94, 0.15, 0, 0.12, 0.24, 8, 0x689a7b);
   box(0, 3.32, -4.1, 10.5, 0.12, 0.3, 0xc8dfbf);
   box(-5.1, 3.32, 0, 0.3, 0.12, 8.45, 0xb4cfa9);
+  // Continuous solid room envelope, including the walls previously cut away.
+  box(5.1, 1.65, 0, 0.24, 3.3, 8.4, palette.wall);
+  box(0, 1.65, 4.1, 10.4, 3.3, 0.24, palette.side);
+  box(0, 3.4, 0, 10.4, 0.24, 8.4, 0xd9d9b9);
+  box(4.94, 0.15, 0, 0.12, 0.24, 8, 0x689a7b);
+  box(0, 0.15, 3.93, 10, 0.24, 0.12, 0x689a7b);
+  for (const x of [-4.94, 4.94])
+    box(x, 3.15, 0, 0.12, 0.18, 8, palette.darkWood);
+  for (const z of [-3.93, 3.93])
+    box(0, 3.15, z, 10, 0.18, 0.12, palette.darkWood);
+  for (const x of [-2.5, 2.5]) box(x, 3.22, 0, 0.16, 0.18, 8, palette.wood);
+  box(0, 3.23, 0.1, 0.9, 0.12, 0.9, palette.darkWood);
+  box(0, 3.12, 0.1, 0.67, 0.16, 0.67, palette.cream);
+  // Closed door: no opening through the front wall.
+  box(0.3, 1.28, 3.91, 1.65, 2.55, 0.14, palette.darkWood);
+  box(0.3, 1.24, 3.81, 1.38, 2.36, 0.09, palette.wood);
+  for (const x of [-0.13, 0.3, 0.73])
+    box(x, 1.24, 3.755, 0.025, 2.33, 0.025, 0x94653e);
+  box(0.8, 1.25, 3.7, 0.11, 0.1, 0.12, 0xd5bd72);
   // Window and square sunlight on the floor.
   box(1.95, 2.0, -3.9, 2.15, 1.9, 0.14, 0x638c73);
   box(1.95, 2.0, -3.79, 1.93, 1.65, 0.07, 0xbde2de);
@@ -129,6 +165,7 @@ export function createWorld(
   box(0.72, 2.04, -3.55, 0.35, 1.95, 0.3, 0xf1dfb2);
   box(3.18, 2.04, -3.55, 0.35, 1.95, 0.3, 0xf1dfb2);
   // Work desk and its terminal.
+  interactiveId = 'terminal';
   box(-1.6, 1.07, -2.9, 3.5, 0.18, 1.25, palette.wood);
   for (const x of [-3.05, -0.16])
     for (const z of [-3.35, -2.45])
@@ -147,6 +184,7 @@ export function createWorld(
     screenMaterial,
   );
   screen.position.set(-1.65, 1.83, -2.945);
+  screen.userData.interactiveId = 'terminal';
   scene.add(screen);
   box(-1.98, 1.99, -2.92, 0.07, 0.045, 0.025, 0xb7edbe);
   box(-1.91, 1.94, -2.92, 0.07, 0.045, 0.025, 0xb7edbe);
@@ -168,9 +206,10 @@ export function createWorld(
   box(-2.8, 1.34, -2.75, 0.27, 0.42, 0.27, 0xf0d4a4);
   box(-2.59, 1.34, -2.75, 0.13, 0.22, 0.12, 0xf0d4a4);
   // A stool tucked beneath the desk stays inside its collision footprint.
-  box(-1.55, 0.53, -2.2, 0.65, 0.15, 0.55, 0x648e70);
-  box(-1.55, 0.3, -2.2, 0.18, 0.55, 0.18, palette.darkWood);
+  box(-1.55, 0.53, -2.6, 0.65, 0.15, 0.55, 0x648e70);
+  box(-1.55, 0.3, -2.6, 0.18, 0.55, 0.18, palette.darkWood);
   // Shelf and notebook on the left wall.
+  interactiveId = 'notes';
   box(-4.25, 0.54, -0.8, 1.15, 1.0, 3.7, palette.darkWood);
   box(-4.25, 1.09, -0.8, 1.24, 0.12, 3.82, palette.wood);
   for (const z of [-1.95, -0.8, 0.4]) {
@@ -191,6 +230,7 @@ export function createWorld(
       0.14,
       [0xc8885e, 0x426e57, 0xd7bb76, 0x749b94][i % 4],
     );
+  interactiveId = null;
   // Bed with a quilt; the mattress is a solid obstacle.
   box(3, 0.36, -1.6, 2.45, 0.62, 3.9, palette.darkWood);
   box(3, 0.78, -1.56, 2.32, 0.38, 3.68, 0xe8debd);
@@ -258,83 +298,39 @@ export function createWorld(
   box(-2.45, 2.32, -3.745, 0.47, 0.51, 0.025, 0xe5c57d);
   box(-2.43, 2.53, -3.71, 0.055, 0.055, 0.03, 0x5d8568);
   // Floor lamp is the day/night switch.
+  interactiveId = 'light';
   box(4.15, 0.1, 2.1, 0.6, 0.14, 0.6, palette.deep);
   box(4.15, 1.18, 2.1, 0.09, 2.2, 0.09, palette.darkWood);
   box(4.15, 2.35, 2.1, 0.91, 0.48, 0.91, 0xe8d9ad);
   box(4.15, 2.64, 2.1, 0.67, 0.14, 0.67, 0xf1e2b9);
-  // Pixel-shaped avatar with independently moving legs.
-  const avatar = new THREE.Group();
-  scene.add(avatar);
-  const leftLeg = box(-0.14, 0.23, 0, 0.2, 0.42, 0.24, 0x485d56, avatar),
-    rightLeg = box(0.14, 0.23, 0, 0.2, 0.42, 0.24, 0x485d56, avatar);
-  box(-0.14, 0.08, 0.07, 0.23, 0.13, 0.34, 0xe2d7b7, avatar);
-  box(0.14, 0.08, 0.07, 0.23, 0.13, 0.34, 0xe2d7b7, avatar);
-  box(0, 0.64, 0, 0.59, 0.5, 0.34, 0xe2b256, avatar);
-  box(-0.39, 0.65, 0, 0.18, 0.41, 0.25, 0xe2b256, avatar);
-  box(0.39, 0.65, 0, 0.18, 0.41, 0.25, 0xe2b256, avatar);
-  box(-0.39, 0.4, 0, 0.17, 0.14, 0.23, 0xe1b891, avatar);
-  box(0.39, 0.4, 0, 0.17, 0.14, 0.23, 0xe1b891, avatar);
-  box(0, 1.07, 0, 0.55, 0.48, 0.46, 0xe3bf97, avatar);
-  box(0, 1.34, -0.02, 0.62, 0.18, 0.53, 0x4c443a, avatar);
-  box(-0.245, 1.13, -0.02, 0.12, 0.32, 0.49, 0x4c443a, avatar);
-  box(0.245, 1.18, -0.07, 0.12, 0.22, 0.38, 0x4c443a, avatar);
-  box(-0.12, 1.09, 0.239, 0.065, 0.065, 0.025, 0x383e34, avatar);
-  box(0.12, 1.09, 0.239, 0.065, 0.065, 0.025, 0x383e34, avatar);
-  const selection = new THREE.Mesh(
-    new THREE.RingGeometry(0.44, 0.48, 4),
-    new THREE.MeshBasicMaterial({ color: 0xeff8cd, side: THREE.DoubleSide }),
-  );
-  selection.rotation.x = -Math.PI / 2;
-  selection.rotation.z = Math.PI / 4;
-  selection.position.y = 0.12;
-  scene.add(selection);
-  const destination = new THREE.Mesh(
-    new THREE.RingGeometry(0.15, 0.2, 4),
-    new THREE.MeshBasicMaterial({ color: 0xf7efd0, side: THREE.DoubleSide }),
-  );
-  destination.rotation.x = -Math.PI / 2;
-  destination.position.y = 0.14;
-  destination.visible = false;
-  scene.add(destination);
-
-  let position: Point = { x: 0, z: 1.35 },
-    path: Point[] = [],
+  interactiveId = null;
+  // The camera is the player: there is no external avatar or orbit view.
+  let position: Point = { x: START_POSE.x, z: START_POSE.z },
     paused = false,
     night = false,
     nearby: ObjectId | null = null,
     walking = false,
     frame = 0,
     lastTime = performance.now();
-  const keys = new Set<string>();
-  let width = 0,
-    height = 0;
-  function resize() {
-    width = host.clientWidth;
-    height = host.clientHeight;
+  const controls = createFirstPersonControls(renderer.domElement, {
+    onChange: callbacks.onControlChange,
+    onInteract: () => {
+      if (paused || !nearby) return;
+      if (nearby !== 'light') {
+        paused = true;
+        controls.setPaused(true);
+      }
+      callbacks.onInteract(nearby);
+    },
+  });
+  const resize = () => {
+    const width = host.clientWidth,
+      height = host.clientHeight;
     if (!width || !height) return;
     renderer.setSize(width, height);
-    const aspect = width / height;
-    const span = Math.max(11.8, (width < 680 ? 20 : 17.3) / aspect);
-    camera.left = (-span * aspect) / 2;
-    camera.right = (span * aspect) / 2;
-    camera.top = span / 2;
-    camera.bottom = -span / 2;
+    camera.aspect = width / height;
     camera.updateProjectionMatrix();
-    callbacks.onMarkers(
-      objects.map((object) => {
-        const p = new THREE.Vector3(
-          object.label.x,
-          object.label.y,
-          object.label.z,
-        ).project(camera);
-        return {
-          id: object.id,
-          x: ((p.x + 1) * width) / 2,
-          y: ((1 - p.y) * height) / 2,
-        };
-      }),
-    );
-  }
+  };
   let resizeFrame = 0;
   const observer = new ResizeObserver(() => {
     cancelAnimationFrame(resizeFrame);
@@ -342,125 +338,39 @@ export function createWorld(
   });
   observer.observe(host);
   resize();
-  const clearKeys = () => {
-    keys.clear();
-  };
-  function onKeyDown(event: KeyboardEvent) {
-    if (paused || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (
-      ['INPUT', 'TEXTAREA', 'SELECT'].includes(
-        (event.target as HTMLElement)?.tagName,
-      )
-    )
-      return;
-    const key = event.key.toLowerCase();
-    if (
-      [
-        'w',
-        'a',
-        's',
-        'd',
-        'arrowup',
-        'arrowleft',
-        'arrowdown',
-        'arrowright',
-      ].includes(key)
-    ) {
-      event.preventDefault();
-      keys.add(key);
-      path = [];
-      destination.visible = false;
-      callbacks.onArrive();
-    }
-    if (key === 'e' && !event.repeat && nearby) {
-      event.preventDefault();
-      callbacks.onInteract(nearby);
-    }
-  }
-  const onKeyUp = (event: KeyboardEvent) =>
-    keys.delete(event.key.toLowerCase());
-  window.addEventListener('keydown', onKeyDown);
-  window.addEventListener('keyup', onKeyUp);
-  window.addEventListener('blur', clearKeys);
-  document.addEventListener('visibilitychange', clearKeys);
-  const raycaster = new THREE.Raycaster(),
-    plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-    hit = new THREE.Vector3();
-  function walkTo(goal: Point) {
-    path = findPath(position, goal);
-    if (path.length) {
-      destination.position.set(goal.x, 0.14, goal.z);
-      destination.visible = true;
-    } else callbacks.onArrive();
-  }
-  function click(event: PointerEvent) {
-    if (paused || event.button !== 0) return;
-    host.focus();
-    const rect = host.getBoundingClientRect();
-    raycaster.setFromCamera(
-      new THREE.Vector2(
-        ((event.clientX - rect.left) / width) * 2 - 1,
-        (-(event.clientY - rect.top) / height) * 2 + 1,
-      ),
-      camera,
-    );
-    if (raycaster.ray.intersectPlane(plane, hit) && canStand(hit.x, hit.z))
-      walkTo({ x: hit.x, z: hit.z });
-  }
-  renderer.domElement.addEventListener('pointerdown', click);
+  scene.updateMatrixWorld(true);
+  const raycaster = new THREE.Raycaster();
+  const center = new THREE.Vector2(0, 0);
   function animate(time: number) {
-    const dt = Math.min((time - lastTime) / 1000, 0.04);
+    const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
-    let dx = 0,
-      dz = 0;
-    if (!paused) {
-      let horizontal =
-        Number(keys.has('d') || keys.has('arrowright') || keys.has('right')) -
-        Number(keys.has('a') || keys.has('arrowleft') || keys.has('left'));
-      let vertical =
-        Number(keys.has('s') || keys.has('arrowdown') || keys.has('down')) -
-        Number(keys.has('w') || keys.has('arrowup') || keys.has('up'));
-      if (horizontal || vertical) {
-        const norm = Math.hypot(horizontal, vertical);
-        horizontal /= norm;
-        vertical /= norm;
-        dx = (horizontal + vertical) * Math.SQRT1_2 * dt * 2.6;
-        dz = (-horizontal + vertical) * Math.SQRT1_2 * dt * 2.6;
-      } else if (path.length) {
-        const next = path[0],
-          distance = Math.hypot(next.x - position.x, next.z - position.z),
-          step = dt * 2.6;
-        if (distance <= step) {
-          dx = next.x - position.x;
-          dz = next.z - position.z;
-          path.shift();
-          if (!path.length) {
-            destination.visible = false;
-            callbacks.onArrive();
-          }
-        } else {
-          dx = ((next.x - position.x) / distance) * step;
-          dz = ((next.z - position.z) / distance) * step;
-        }
-      }
-    }
-    const nextPosition = movePlayer(position, dx, dz);
-    const moving =
-      Math.hypot(nextPosition.x - position.x, nextPosition.z - position.z) >
-      0.0001;
-    position = nextPosition;
-    if (moving) avatar.rotation.y = Math.atan2(dx, dz);
-    avatar.position.set(
-      position.x,
-      moving ? Math.abs(Math.sin(time / 110)) * 0.035 : 0,
-      position.z,
+    const movement = controls.getMovement(dt),
+      pose = controls.getPose();
+    const step = firstPersonStep(
+      movement.strafe,
+      movement.forward,
+      pose.yaw,
+      dt,
     );
-    leftLeg.rotation.x = moving ? Math.sin(time / 100) * 0.35 : 0;
-    rightLeg.rotation.x = -leftLeg.rotation.x;
-    selection.position.set(position.x, 0.13, position.z);
-    const nextNearby = getNearby(position);
-    if (nextNearby !== nearby) {
-      nearby = nextNearby;
+    const next = movePlayer(position, step.x, step.z);
+    const moving =
+      Math.hypot(next.x - position.x, next.z - position.z) > 0.0001;
+    position = next;
+    camera.position.set(position.x, EYE_HEIGHT, position.z);
+    camera.rotation.set(pose.pitch, pose.yaw, 0);
+    camera.updateMatrixWorld();
+    raycaster.setFromCamera(center, camera);
+    const firstHit = raycaster.intersectObjects(scene.children, false)[0];
+    const focused = getFocusedObject(
+      firstHit
+        ? {
+            id: firstHit.object.userData.interactiveId as ObjectId | undefined,
+            distance: firstHit.distance,
+          }
+        : undefined,
+    );
+    if (focused !== nearby) {
+      nearby = focused;
       callbacks.onNearby(nearby);
     }
     if (moving !== walking) {
@@ -469,17 +379,22 @@ export function createWorld(
     }
     sun.intensity = THREE.MathUtils.lerp(
       sun.intensity,
-      night ? 0.4 : 3.1,
+      night ? 0.12 : 2.3,
       dt * 3,
     );
     ambient.intensity = THREE.MathUtils.lerp(
       ambient.intensity,
-      night ? 0.65 : 1.65,
+      night ? 0.55 : 1.4,
+      dt * 3,
+    );
+    ceilingLight.intensity = THREE.MathUtils.lerp(
+      ceilingLight.intensity,
+      night ? 2 : 18,
       dt * 3,
     );
     lampLight.intensity = THREE.MathUtils.lerp(
       lampLight.intensity,
-      night ? 15 : 0,
+      night ? 20 : 1,
       dt * 3,
     );
     renderer.render(scene, camera);
@@ -487,51 +402,35 @@ export function createWorld(
   }
   frame = requestAnimationFrame(animate);
   return {
+    enter() {
+      controls.enter();
+    },
     setPaused(value) {
       paused = value;
-      keys.clear();
-      path = [];
-      destination.visible = false;
-      callbacks.onArrive();
+      controls.setPaused(value);
     },
     setNight(value) {
       night = value;
-      ambient.color.set(value ? 0x8eaecb : 0xe4f3e8);
-    },
-    goTo(id) {
-      const object = objects.find((item) => item.id === id);
-      if (object && !paused) walkTo(object.anchor);
+      ambient.color.set(value ? 0x91a5c3 : 0xe4f3e8);
     },
     reset() {
-      position = { x: 0, z: 1.35 };
-      path = [];
-      keys.clear();
-      destination.visible = false;
+      position = { x: START_POSE.x, z: START_POSE.z };
+      controls.reset();
     },
     setTouch(direction, pressed) {
-      if (pressed && !paused) {
-        keys.add(direction);
-        path = [];
-        destination.visible = false;
-      } else keys.delete(direction);
+      controls.setTouch(direction, pressed);
     },
     dispose() {
       cancelAnimationFrame(frame);
       cancelAnimationFrame(resizeFrame);
       observer.disconnect();
-      window.removeEventListener('keydown', onKeyDown);
-      window.removeEventListener('keyup', onKeyUp);
-      window.removeEventListener('blur', clearKeys);
-      document.removeEventListener('visibilitychange', clearKeys);
-      renderer.domElement.removeEventListener('pointerdown', click);
+      controls.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) object.geometry.dispose();
       });
       materials.forEach((value) => value.dispose());
       blockTexture.dispose();
       screenMaterial.dispose();
-      (selection.material as THREE.Material).dispose();
-      (destination.material as THREE.Material).dispose();
       renderer.dispose();
       renderer.domElement.remove();
     },

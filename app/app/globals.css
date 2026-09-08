@@ -854,3 +854,268 @@ kbd {
     inset: 140px 0 35px;
   }
 }
+
+/* First-person view: the room fills the viewport; all chrome is an overlay. */
+.fps-shell {
+  min-height: 420px;
+  position: relative;
+  display: block;
+  background: #23372d;
+  color: #eff2dc;
+}
+.fps-shell .world-section {
+  position: absolute;
+  inset: 0;
+  background: none;
+}
+.fps-shell .world-canvas {
+  inset: 0;
+}
+.fps-shell .topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 70px;
+  background: linear-gradient(#1c332cd9, #1c332c80);
+  border-color: #d0dbbc26;
+  z-index: 10;
+}
+.fps-shell .brand-divider,
+.fps-shell .brand-dot {
+  color: #d2be80;
+}
+.fps-shell .brand-icon {
+  background: #365d41;
+  border: 1px solid #a1bc7c;
+  box-shadow: 3px 3px 0 #142719;
+}
+.fps-shell .header-center,
+.fps-shell .local-time,
+.fps-shell .local-time b {
+  color: #e0e8cb;
+}
+.fps-shell .icon-button {
+  border-color: #a7b88d80;
+  background: #223c2c85;
+}
+.fps-shell .room-heading {
+  top: 94px;
+  left: 4.3%;
+  text-shadow: 1px 2px 0 #15261f;
+}
+.fps-shell .room-heading h1 {
+  font-size: 22px;
+  margin: 7px 0;
+}
+.fps-shell .eyebrow {
+  color: #cbdab1;
+}
+.fps-shell .room-indicator {
+  top: 98px;
+  color: #e3e8c6;
+  text-shadow: 1px 2px 0 #18291d;
+}
+.fps-shell .bottom-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 80px;
+  background: linear-gradient(transparent, #172d24e8);
+  border: 0;
+  color: #eef2d5;
+  z-index: 10;
+}
+.fps-shell .location > div > span,
+.fps-shell .reset-button,
+.fps-shell .control-hints {
+  color: #d2ddbd;
+}
+.fps-shell .reset-button:hover {
+  background: #1c332c;
+}
+.fps-shell .status-dot {
+  background: #b1c982;
+}
+.fps-shell .control-hints {
+  gap: 20px;
+}
+.fps-shell .control-hints kbd {
+  background: #27402ec9;
+  color: #f1efce;
+  border-color: #9cae7580;
+  box-shadow: 0 2px 0 #132518;
+}
+.crosshair {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  filter: drop-shadow(1px 1px 0 #112318);
+  z-index: 3;
+  opacity: 0.85;
+}
+.crosshair:before,
+.crosshair:after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #f3f0d4;
+}
+.crosshair:before {
+  width: 14px;
+  height: 2px;
+}
+.crosshair:after {
+  width: 2px;
+  height: 14px;
+}
+.crosshair.can-interact:before,
+.crosshair.can-interact:after {
+  background: #d5f39a;
+}
+.entry-prompt {
+  position: absolute;
+  left: 50%;
+  top: 55%;
+  transform: translate(-50%, -50%);
+  z-index: 6;
+  width: min(405px, calc(100% - 40px));
+  padding: 28px;
+  background: #1c342aeb;
+  border: 2px solid #95ab73;
+  box-shadow: 6px 6px 0 #10251e80;
+  text-align: center;
+}
+.entry-prompt .eyebrow {
+  justify-content: center;
+}
+.entry-prompt h2 {
+  font-size: 30px;
+  font-weight: 400;
+  margin: 18px 0 12px;
+  color: #f0edcd;
+}
+.entry-prompt p {
+  font-size: 16px;
+  line-height: 1.7;
+  color: #c5d5b6;
+  margin: 0 0 23px;
+}
+.entry-prompt button {
+  border: 1px solid #c4d58f;
+  background: #547444;
+  box-shadow: 3px 3px 0 #111f16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  padding: 13px;
+  color: #f5f2d5;
+  font-size: 18px;
+}
+.entry-prompt button:hover {
+  background: #658852;
+}
+.entry-prompt > span {
+  display: block;
+  font-size: 12px;
+  line-height: 1.9;
+  color: #a8bc99;
+  margin-top: 18px;
+}
+.look-hint {
+  position: absolute;
+  left: 50%;
+  top: 82px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #152d23aa;
+  color: #e5edcf;
+  padding: 7px 12px;
+  font-size: 12px;
+  z-index: 3;
+  pointer-events: none;
+}
+.fps-shell .interaction-prompt {
+  bottom: 102px;
+  color: #355741;
+}
+.fps-shell .touch-controls {
+  bottom: 100px;
+}
+.fps-shell .world-loading {
+  background: #243a2f;
+  color: #e0e8c5;
+}
+@media (max-width: 680px) {
+  .fps-shell .topbar {
+    height: 64px;
+    padding: 0 20px;
+  }
+  .fps-shell .world-canvas {
+    inset: 0;
+  }
+  .fps-shell .room-heading {
+    top: 84px;
+    left: 22px;
+  }
+  .fps-shell .room-heading h1 {
+    font-size: 18px;
+  }
+  .fps-shell .room-indicator {
+    top: 91px;
+    right: 22px;
+  }
+  .fps-shell .bottom-bar {
+    height: 64px;
+    padding: 0 22px;
+  }
+  .fps-shell .entry-prompt {
+    padding: 23px;
+    top: 50%;
+  }
+  .fps-shell .entry-prompt h2 {
+    font-size: 26px;
+  }
+  .fps-shell .entry-prompt p {
+    font-size: 14px;
+  }
+  .fps-shell .look-hint {
+    top: auto;
+    bottom: 72px;
+    width: calc(100% - 40px);
+    white-space: normal;
+    text-align: center;
+  }
+  .fps-shell .interaction-prompt {
+    bottom: 140px;
+  }
+  .fps-shell .touch-controls {
+    bottom: 82px;
+    grid-template-columns: repeat(3, 39px);
+    grid-template-rows: repeat(2, 39px);
+  }
+}
+
+.fps-shell .touch-controls button {
+  color: #345741;
+  background: #edf2db;
+  border-color: #9cad7b;
+}
+@media (max-width: 680px) {
+  .fps-shell .look-hint {
+    top: 145px;
+    bottom: auto;
+  }
+  .fps-shell .interaction-prompt {
+    bottom: 195px;
+  }
+}
