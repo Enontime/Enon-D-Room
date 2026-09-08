@@ -1,5 +1,5 @@
 export const EYE_HEIGHT = 1.65;
-export const START_POSE = { x: 0, z: 2.3, yaw: 0.28, pitch: -0.035 };
+export const START_POSE = { x: 0, z: 3.3, yaw: 0.28, pitch: -0.035 };
 export function firstPersonStep(
   strafe: number,
   forward: number,

@@ -1,7 +1,11 @@
-import { solids, type Point } from '../world/objects.ts';
+import { ROOM, solids, type Point } from '../world/objects.ts';
 const radius = 0.25;
 export function canStand(x: number, z: number): boolean {
-  if (x < -4.65 || x > 4.65 || z < -3.65 || z > 3.65) return false;
+  if (
+    Math.abs(x) > ROOM.halfWidth - 0.35 ||
+    Math.abs(z) > ROOM.halfDepth - 0.35
+  )
+    return false;
   return !solids.some(
     (s) =>
       Math.abs(x - s.x) < s.width / 2 + radius &&

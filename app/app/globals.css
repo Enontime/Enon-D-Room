@@ -1110,6 +1110,435 @@ kbd {
   background: #edf2db;
   border-color: #9cad7b;
 }
+
+/* The television and cube inherit the room's pixel display language. */
+.application-window[data-slot='dialog-content'] {
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+}
+.play-window .window-titlebar {
+  position: sticky;
+  top: 0;
+  z-index: 4;
+}
+.television-app {
+  background: #173b37;
+  color: #e3edce;
+}
+.arcade-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px 24px;
+  border-bottom: 1px solid #6d99846b;
+  font-size: 14px;
+  color: #9fc8ad;
+}
+.arcade-top button,
+.game-actions button,
+.game-pad button {
+  border: 1px solid #729881;
+  background: #244d40;
+  color: #e5edc9;
+  padding: 8px 12px;
+}
+.game-menu {
+  padding: 28px;
+}
+.game-menu .eyebrow {
+  color: #a5c797;
+}
+.game-menu h2 {
+  font-size: 28px;
+  font-weight: 400;
+  margin: 14px 0 25px;
+}
+.game-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.game-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
+  gap: 15px;
+  padding: 24px 20px;
+  border: 1px solid #719683;
+  box-shadow: 4px 4px 0 #0d2520;
+  background: #285648;
+  color: #e2edc6;
+}
+.game-choice:nth-child(2) {
+  background: #394f67;
+  border-color: #7c9cab;
+  color: #e6e6d0;
+}
+.game-choice:hover {
+  border-color: #d4ddb3;
+  transform: translateY(-3px);
+}
+.game-choice .game-number {
+  font-size: 36px;
+  color: #edca78;
+  line-height: 1;
+}
+.game-choice strong {
+  font-size: 24px;
+  font-weight: 400;
+}
+.game-choice > span:not(.game-number) {
+  font-size: 16px;
+  line-height: 1.7;
+  opacity: 0.85;
+}
+.game-choice b {
+  border-top: 1px solid #afc8b443;
+  padding-top: 16px;
+  margin-top: 10px;
+  font-size: 14px;
+  font-weight: 400;
+  width: 100%;
+}
+.game-note {
+  font-size: 14px;
+  color: #a8c3ad;
+  line-height: 1.8;
+  margin: 25px 0 0;
+}
+.snake-game,
+.memory-game {
+  padding: 18px 28px 24px;
+}
+.game-score {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 15px;
+}
+.game-score h2 {
+  margin: 0;
+  font-weight: 400;
+  font-size: 22px;
+}
+.game-score > span {
+  font-size: 14px;
+  color: #e1c784;
+}
+.snake-board {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(16, 1fr);
+  position: relative;
+  width: min(340px, 100%);
+  aspect-ratio: 1;
+  margin: auto;
+  border: 3px solid #78917b;
+  background-color: #102c28;
+  background-image:
+    linear-gradient(#385a4133 1px, transparent 1px),
+    linear-gradient(90deg, #385a4133 1px, transparent 1px);
+  background-size: 6.25% 6.25%;
+}
+.snake-cell {
+  background: #94bd6c;
+  border: 1px solid #173d2f;
+}
+.snake-head {
+  background: #d1df9b;
+  box-shadow: inset 0 0 0 3px #91b76a;
+}
+.snake-food {
+  background: #efc563;
+  border: 3px solid #102c28;
+}
+.board-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  background: #0e2823dc;
+  text-align: center;
+  padding: 20px;
+}
+.board-overlay strong {
+  font-size: 24px;
+  font-weight: 400;
+}
+.board-overlay span {
+  font-size: 14px;
+  color: #abc4a9;
+}
+.board-overlay button {
+  margin-top: 10px;
+  border: 1px solid #e5d498;
+  padding: 10px 18px;
+  background: #e7c472;
+  color: #243e2d;
+  box-shadow: 3px 3px 0 #0005;
+}
+.game-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 15px;
+}
+.game-actions span {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #b6cdb7;
+}
+.game-actions button {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+.game-pad {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-top: 14px;
+}
+.game-pad button {
+  width: 45px;
+  font-size: 20px;
+  touch-action: none;
+}
+.game-actions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.memory-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  max-width: 400px;
+  margin: auto;
+}
+.memory-card {
+  aspect-ratio: 1;
+  border: 2px solid #71967f;
+  background: #2c5748;
+  color: #a4bda2;
+  font: 30px monospace;
+  box-shadow: 3px 3px 0 #0d2721;
+}
+.memory-card.flipped {
+  background: #eddfb1;
+  border-color: #e7bf74;
+  color: #315344;
+}
+.memory-card.matched {
+  background: #90b879;
+  color: #1b432f;
+  border-color: #b7d199;
+  opacity: 0.7;
+  cursor: default;
+}
+.memory-card:disabled {
+  cursor: default;
+}
+.cube-app {
+  padding: 20px 28px;
+  background: #e6ebdc;
+}
+.cube-app .game-score > span {
+  color: #507345;
+}
+.cube-stage {
+  height: 260px;
+  position: relative;
+  background: radial-gradient(ellipse at center, #f0f1e2, #d3e0cb);
+  border: 1px solid #b7c7a8;
+  touch-action: none;
+  cursor: grab;
+}
+.cube-stage:active {
+  cursor: grabbing;
+}
+.cube-stage canvas {
+  display: block;
+  touch-action: none;
+}
+.cube-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+.cube-instruction {
+  font-size: 14px;
+  line-height: 1.8;
+  color: #667954;
+  margin: 13px 0;
+}
+.cube-face-controls {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.cube-face {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  border: 1px solid #b7c4a6;
+  padding: 7px;
+  background: #f3f3e5;
+}
+.cube-face > span {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex: 1;
+  font-size: 14px;
+  white-space: nowrap;
+}
+.cube-face i {
+  width: 10px;
+  height: 10px;
+  border: 1px solid #52714855;
+}
+.cube-face button {
+  background: #d6e0c9;
+  border: 1px solid #a6b99a;
+  width: 32px;
+  height: 32px;
+  font-family: monospace;
+  font-size: 22px;
+}
+.cube-face button:disabled,
+.cube-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.cube-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+.cube-actions button {
+  border: 1px solid #93ac84;
+  background: #f3f1dc;
+  color: #36583d;
+  padding: 8px 11px;
+  font-size: 14px;
+}
+.cube-actions button:first-child {
+  background: #456c4a;
+  color: #edf1d1;
+}
+.cube-moves {
+  margin: 12px 0 0;
+  min-height: 22px;
+  font-size: 12px;
+  color: #7a886e;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.profile-content {
+  padding: 32px;
+  background: #edf0df;
+}
+.profile-content h2 {
+  font-size: 30px;
+  font-weight: 400;
+  margin: 20px 0;
+}
+.profile-content p {
+  font-size: 16px;
+  line-height: 1.9;
+  color: #6b7d5f;
+}
+.profile-content a {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: #355b42;
+  color: #ecedca;
+  padding: 20px 24px;
+  margin: 25px 0;
+  border: 1px solid #9eb17f;
+  box-shadow: 4px 4px 0 #c6d2b4;
+  font-size: 20px;
+}
+.profile-content a span {
+  font-size: 14px;
+  color: #b5cbac;
+}
+.profile-content .profile-hint {
+  font-size: 14px;
+}
+@media (max-width: 680px) {
+  .game-menu,
+  .snake-game,
+  .memory-game {
+    padding: 18px;
+  }
+  .game-menu h2 {
+    font-size: 24px;
+  }
+  .game-choices {
+    gap: 12px;
+  }
+  .game-choice {
+    padding: 18px 13px;
+    gap: 12px;
+  }
+  .game-choice strong {
+    font-size: 20px;
+  }
+  .game-choice > span:not(.game-number) {
+    font-size: 14px;
+  }
+  .game-choice b {
+    font-size: 12px;
+  }
+  .arcade-top {
+    padding: 13px 18px;
+    font-size: 12px;
+  }
+  .cube-app {
+    padding: 16px;
+  }
+  .cube-stage {
+    height: 220px;
+  }
+  .cube-face-controls {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .cube-actions {
+    gap: 6px;
+  }
+  .cube-actions button {
+    font-size: 12px;
+    padding: 8px;
+  }
+  .cube-face {
+    padding: 5px;
+  }
+  .cube-face > span {
+    font-size: 12px;
+  }
+  .game-score h2 {
+    font-size: 20px;
+  }
+  .game-score > span {
+    font-size: 12px;
+  }
+  .game-actions {
+    flex-wrap: wrap;
+  }
+  .profile-content {
+    padding: 24px;
+  }
+}
 @media (max-width: 680px) {
   .fps-shell .look-hint {
     top: 145px;

@@ -17,7 +17,9 @@ import {
 } from '@/components/ui/dialog';
 import { TerminalApp } from '@/components/apps/terminal';
 import { NotesApp } from '@/components/apps/notes';
-import { objects, type ObjectId } from '@/lib/world/objects';
+import { TelevisionApp } from '@/components/apps/television';
+import { CubeApp } from '@/components/apps/cube';
+import { objects, PROFILE_URL, type ObjectId } from '@/lib/world/objects';
 import type { WorldController } from '@/lib/world/scene';
 import type { ControlMode } from '@/lib/player/controls';
 
@@ -41,6 +43,8 @@ export default function HomePage() {
     else {
       world.current?.setPaused(true);
       setActive(id);
+      if (id === 'profile')
+        window.open(PROFILE_URL, '_blank', 'noopener,noreferrer');
     }
   };
   useEffect(() => {
@@ -266,7 +270,7 @@ export default function HomePage() {
         }}
       >
         <DialogContent
-          className={`application-window ${active === 'terminal' ? 'terminal-window' : ''}`}
+          className={`application-window ${active === 'terminal' ? 'terminal-window' : ''} ${active === 'tv' || active === 'cube' ? 'play-window' : ''}`}
           showCloseButton={false}
         >
           <div className="window-titlebar">
@@ -277,7 +281,13 @@ export default function HomePage() {
                   ? 'TERMINAL / 本地终端'
                   : active === 'notes'
                     ? 'NOTEBOOK / 随手记'
-                    : 'HOW TO PLAY / 操作指南'}
+                    : active === 'tv'
+                      ? 'ENON PLAY / 小游戏电视'
+                      : active === 'cube'
+                        ? 'RUBIK / 三阶魔方'
+                        : active === 'profile'
+                          ? 'ENON / 个人主页'
+                          : 'HOW TO PLAY / 操作指南'}
               </DialogTitle>
             </div>
             <DialogClose
@@ -292,11 +302,32 @@ export default function HomePage() {
               ? '连接本机 PowerShell 的交互式终端。'
               : active === 'notes'
                 ? '在这台设备保存你的想法。'
-                : '探索房间的操作方式。'}
+                : active === 'tv'
+                  ? '选择贪吃蛇或配对记忆，在房间里休息一下。'
+                  : active === 'cube'
+                    ? '转动六面、打乱和撤销，玩真正的三阶魔方。'
+                    : active === 'profile'
+                      ? '打开 Enon 的个人网站。'
+                      : '探索房间的操作方式。'}
             按 Escape 返回房间。
           </DialogDescription>
           {active === 'terminal' && <TerminalApp />}
           {active === 'notes' && <NotesApp />}
+          {active === 'tv' && <TelevisionApp />}
+          {active === 'cube' && <CubeApp />}
+          {active === 'profile' && (
+            <div className="profile-content">
+              <div className="eyebrow">PERSONAL SPACE</div>
+              <h2>你好，我是 Enon。</h2>
+              <p>关于我、我的作品和更多故事，都放在个人主页里。</p>
+              <a href={PROFILE_URL} target="_blank" rel="noopener noreferrer">
+                打开个人主页 ↗<span>enontime.github.io</span>
+              </a>
+              <p className="profile-hint">
+                主页会在新标签页打开，这个房间会留在原处。
+              </p>
+            </div>
+          )}
           {active === 'help' && (
             <div className="help-content">
               <div className="eyebrow">MAKE YOURSELF AT HOME</div>
@@ -324,7 +355,8 @@ export default function HomePage() {
                 <span>返回房间</span>
               </div>
               <p className="help-note">
-                将准星对准近处的电脑、笔记柜或落地灯，再按 E 使用。Esc
+                门左边是小游戏电视，门右边是个人主页展示板；右侧小推车上放着可玩的魔方。
+                将准星对准近处的物品按 E，或直接点击物品。Esc
                 释放鼠标；关闭应用后，点击「继续探索」。鼠标锁定不可用时，可按住鼠标拖动，或用
                 I / J / K / L 转动视角。
               </p>

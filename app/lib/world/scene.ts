@@ -11,6 +11,7 @@ import {
   type ControlMode,
 } from '@/lib/player/controls';
 import { getFocusedObject } from '@/lib/interactions/detection';
+import { addRoomDetails } from './decor';
 
 type Callbacks = {
   onNearby: (id: ObjectId | null) => void;
@@ -60,7 +61,7 @@ export function createWorld(
   sun.shadow.normalBias = 0.035;
   scene.add(sun);
   const lampLight = new THREE.PointLight(0xffc35d, 0, 9, 2);
-  lampLight.position.set(4.1, 2.3, 2.1);
+  lampLight.position.set(5.1, 2.3, 3.4);
   scene.add(lampLight);
   const ceilingLight = new THREE.PointLight(0xffe5b5, 18, 14, 2);
   ceilingLight.position.set(0, 2.95, 0.1);
@@ -98,6 +99,8 @@ export function createWorld(
     return materials.get(color)!;
   };
   let interactiveId: ObjectId | null = null;
+  let shiftX = 0,
+    shiftZ = 0;
   const box = (
     x: number,
     y: number,
@@ -112,7 +115,11 @@ export function createWorld(
       new THREE.BoxGeometry(w, h, d),
       material(color),
     );
-    mesh.position.set(x, y, z);
+    mesh.position.set(
+      x + (parent === scene ? shiftX : 0),
+      y,
+      z + (parent === scene ? shiftZ : 0),
+    );
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     if (interactiveId) mesh.userData.interactiveId = interactiveId;
@@ -120,41 +127,41 @@ export function createWorld(
     return mesh;
   };
   // The room is built from real geometry: every usable object occupies space.
-  box(0, -0.28, 0, 10.4, 0.52, 8.4, palette.darkWood);
-  box(0, -0.1, 0, 10.35, 0.18, 8.35, 0xc59662);
-  for (let row = 0; row < 16; row++)
-    for (let col = 0; col < 5; col++) {
+  box(0, -0.28, 0, 12.4, 0.52, 10.4, palette.darkWood);
+  box(0, -0.1, 0, 12.35, 0.18, 10.35, 0xc59662);
+  for (let row = 0; row < 20; row++)
+    for (let col = 0; col < 6; col++) {
       const color = [0xd1ad7f, 0xdbb78a, 0xcda879, 0xd6b183][
         (row * 7 + col * 3) % 4
       ];
-      box(-4 + col * 2, 0.015, -3.75 + row * 0.5, 1.98, 0.06, 0.485, color);
+      box(-5 + col * 2, 0.015, -4.75 + row * 0.5, 1.98, 0.06, 0.485, color);
     }
-  box(0, 1.65, -4.1, 10.4, 3.3, 0.24, palette.wall);
-  box(-5.1, 1.65, 0, 0.24, 3.3, 8.4, palette.side);
-  box(0, 0.15, -3.93, 10, 0.24, 0.12, 0x689a7b);
-  box(-4.94, 0.15, 0, 0.12, 0.24, 8, 0x689a7b);
-  box(0, 3.32, -4.1, 10.5, 0.12, 0.3, 0xc8dfbf);
-  box(-5.1, 3.32, 0, 0.3, 0.12, 8.45, 0xb4cfa9);
+  box(0, 1.65, -5.1, 12.4, 3.3, 0.24, palette.wall);
+  box(-6.1, 1.65, 0, 0.24, 3.3, 10.4, palette.side);
+  box(0, 0.15, -4.93, 12, 0.24, 0.12, 0x689a7b);
+  box(-5.94, 0.15, 0, 0.12, 0.24, 10, 0x689a7b);
   // Continuous solid room envelope, including the walls previously cut away.
-  box(5.1, 1.65, 0, 0.24, 3.3, 8.4, palette.wall);
-  box(0, 1.65, 4.1, 10.4, 3.3, 0.24, palette.side);
-  box(0, 3.4, 0, 10.4, 0.24, 8.4, 0xd9d9b9);
-  box(4.94, 0.15, 0, 0.12, 0.24, 8, 0x689a7b);
-  box(0, 0.15, 3.93, 10, 0.24, 0.12, 0x689a7b);
-  for (const x of [-4.94, 4.94])
-    box(x, 3.15, 0, 0.12, 0.18, 8, palette.darkWood);
-  for (const z of [-3.93, 3.93])
-    box(0, 3.15, z, 10, 0.18, 0.12, palette.darkWood);
-  for (const x of [-2.5, 2.5]) box(x, 3.22, 0, 0.16, 0.18, 8, palette.wood);
+  box(6.1, 1.65, 0, 0.24, 3.3, 10.4, palette.wall);
+  box(0, 1.65, 5.1, 12.4, 3.3, 0.24, palette.side);
+  box(0, 3.4, 0, 12.4, 0.24, 10.4, 0xd9d9b9);
+  box(5.94, 0.15, 0, 0.12, 0.24, 10, 0x689a7b);
+  box(0, 0.15, 4.93, 12, 0.24, 0.12, 0x689a7b);
+  for (const x of [-5.94, 5.94])
+    box(x, 3.15, 0, 0.12, 0.18, 10, palette.darkWood);
+  for (const z of [-4.93, 4.93])
+    box(0, 3.15, z, 12, 0.18, 0.12, palette.darkWood);
+  for (const x of [-3, 3]) box(x, 3.22, 0, 0.16, 0.18, 10, palette.wood);
   box(0, 3.23, 0.1, 0.9, 0.12, 0.9, palette.darkWood);
   box(0, 3.12, 0.1, 0.67, 0.16, 0.67, palette.cream);
   // Closed door: no opening through the front wall.
+  shiftZ = 1;
   box(0.3, 1.28, 3.91, 1.65, 2.55, 0.14, palette.darkWood);
   box(0.3, 1.24, 3.81, 1.38, 2.36, 0.09, palette.wood);
   for (const x of [-0.13, 0.3, 0.73])
     box(x, 1.24, 3.755, 0.025, 2.33, 0.025, 0x94653e);
   box(0.8, 1.25, 3.7, 0.11, 0.1, 0.12, 0xd5bd72);
   // Window and square sunlight on the floor.
+  shiftZ = -1;
   box(1.95, 2.0, -3.9, 2.15, 1.9, 0.14, 0x638c73);
   box(1.95, 2.0, -3.79, 1.93, 1.65, 0.07, 0xbde2de);
   box(1.95, 1.61, -3.72, 1.86, 0.72, 0.02, 0x8fc5a7);
@@ -183,7 +190,7 @@ export function createWorld(
     new THREE.PlaneGeometry(0.96, 0.55),
     screenMaterial,
   );
-  screen.position.set(-1.65, 1.83, -2.945);
+  screen.position.set(-1.65, 1.83, -3.945);
   screen.userData.interactiveId = 'terminal';
   scene.add(screen);
   box(-1.98, 1.99, -2.92, 0.07, 0.045, 0.025, 0xb7edbe);
@@ -209,6 +216,8 @@ export function createWorld(
   box(-1.55, 0.53, -2.6, 0.65, 0.15, 0.55, 0x648e70);
   box(-1.55, 0.3, -2.6, 0.18, 0.55, 0.18, palette.darkWood);
   // Shelf and notebook on the left wall.
+  shiftX = -1;
+  shiftZ = 0;
   interactiveId = 'notes';
   box(-4.25, 0.54, -0.8, 1.15, 1.0, 3.7, palette.darkWood);
   box(-4.25, 1.09, -0.8, 1.24, 0.12, 3.82, palette.wood);
@@ -232,6 +241,8 @@ export function createWorld(
     );
   interactiveId = null;
   // Bed with a quilt; the mattress is a solid obstacle.
+  shiftX = 0.8;
+  shiftZ = -1;
   box(3, 0.36, -1.6, 2.45, 0.62, 3.9, palette.darkWood);
   box(3, 0.78, -1.56, 2.32, 0.38, 3.68, 0xe8debd);
   box(3, 1.04, -0.89, 2.35, 0.2, 2.34, 0x6d967b);
@@ -241,6 +252,8 @@ export function createWorld(
   box(3, 1.05, -2.7, 1.64, 0.23, 0.62, palette.cream);
   box(3, 0.91, -3.49, 2.48, 1.38, 0.14, palette.wood);
   // Rug, with simple woven bands.
+  shiftX = 0;
+  shiftZ = 0;
   box(0.05, 0.07, 1.25, 3.7, 0.05, 2.9, 0x6d9b7e);
   box(0.05, 0.103, 1.25, 3.36, 0.014, 2.56, 0x9fbea0);
   box(0.05, 0.116, 1.25, 2.96, 0.014, 2.2, 0x749d80);
@@ -289,21 +302,27 @@ export function createWorld(
       leaf.rotation.z = Math.cos(angle) * 0.35;
     }
   };
-  plant(-3.95, 2.8, 0, 1.15);
-  plant(-4.22, -0.73, 1.18, 0.65);
+  plant(-4.95, 2.8, 0, 1.15);
+  plant(-5.22, -0.73, 1.18, 0.65);
   // Wall pinboard and small framed art are objects in the room.
+  shiftZ = -1;
   box(-2.65, 2.39, -3.88, 1.62, 1.05, 0.14, palette.darkWood);
   box(-2.65, 2.39, -3.79, 1.44, 0.87, 0.05, 0xbc9765);
   box(-3.03, 2.53, -3.745, 0.4, 0.39, 0.025, 0xede5c5);
   box(-2.45, 2.32, -3.745, 0.47, 0.51, 0.025, 0xe5c57d);
   box(-2.43, 2.53, -3.71, 0.055, 0.055, 0.03, 0x5d8568);
   // Floor lamp is the day/night switch.
+  shiftX = 1;
+  shiftZ = 1.3;
   interactiveId = 'light';
   box(4.15, 0.1, 2.1, 0.6, 0.14, 0.6, palette.deep);
   box(4.15, 1.18, 2.1, 0.09, 2.2, 0.09, palette.darkWood);
   box(4.15, 2.35, 2.1, 0.91, 0.48, 0.91, 0xe8d9ad);
   box(4.15, 2.64, 2.1, 0.67, 0.14, 0.67, 0xf1e2b9);
   interactiveId = null;
+  shiftX = 0;
+  shiftZ = 0;
+  const details = addRoomDetails(scene);
   // The camera is the player: there is no external avatar or orbit view.
   let position: Point = { x: START_POSE.x, z: START_POSE.z },
     paused = false,
@@ -314,15 +333,28 @@ export function createWorld(
     lastTime = performance.now();
   const controls = createFirstPersonControls(renderer.domElement, {
     onChange: callbacks.onControlChange,
-    onInteract: () => {
-      if (paused || !nearby) return;
-      if (nearby !== 'light') {
-        paused = true;
-        controls.setPaused(true);
-      }
-      callbacks.onInteract(nearby);
+    onInteract: () => interact(nearby),
+    onPick: (clientX, clientY) => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const point =
+        document.pointerLockElement === renderer.domElement
+          ? new THREE.Vector2(0, 0)
+          : new THREE.Vector2(
+              ((clientX - rect.left) / rect.width) * 2 - 1,
+              (-(clientY - rect.top) / rect.height) * 2 + 1,
+            );
+      raycaster.setFromCamera(point, camera);
+      interact(pickObject());
     },
   });
+  function interact(id: ObjectId | null) {
+    if (paused || !id) return;
+    if (id !== 'light') {
+      paused = true;
+      controls.setPaused(true);
+    }
+    callbacks.onInteract(id);
+  }
   const resize = () => {
     const width = host.clientWidth,
       height = host.clientHeight;
@@ -341,6 +373,17 @@ export function createWorld(
   scene.updateMatrixWorld(true);
   const raycaster = new THREE.Raycaster();
   const center = new THREE.Vector2(0, 0);
+  function pickObject() {
+    const firstHit = raycaster.intersectObjects(scene.children, true)[0];
+    return getFocusedObject(
+      firstHit
+        ? {
+            id: firstHit.object.userData.interactiveId as ObjectId | undefined,
+            distance: firstHit.distance,
+          }
+        : undefined,
+    );
+  }
   function animate(time: number) {
     const dt = Math.min((time - lastTime) / 1000, 0.05);
     lastTime = time;
@@ -359,16 +402,10 @@ export function createWorld(
     camera.position.set(position.x, EYE_HEIGHT, position.z);
     camera.rotation.set(pose.pitch, pose.yaw, 0);
     camera.updateMatrixWorld();
+    details.tick();
+    scene.updateMatrixWorld(true);
     raycaster.setFromCamera(center, camera);
-    const firstHit = raycaster.intersectObjects(scene.children, false)[0];
-    const focused = getFocusedObject(
-      firstHit
-        ? {
-            id: firstHit.object.userData.interactiveId as ObjectId | undefined,
-            distance: firstHit.distance,
-          }
-        : undefined,
-    );
+    const focused = pickObject();
     if (focused !== nearby) {
       nearby = focused;
       callbacks.onNearby(nearby);
@@ -425,6 +462,7 @@ export function createWorld(
       cancelAnimationFrame(resizeFrame);
       observer.disconnect();
       controls.dispose();
+      details.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) object.geometry.dispose();
       });

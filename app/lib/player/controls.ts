@@ -2,7 +2,11 @@ import { clampPitch, START_POSE } from './first-person.ts';
 export type ControlMode = 'idle' | 'mouse' | 'drag';
 export function createFirstPersonControls(
   element: HTMLCanvasElement,
-  options: { onChange: (mode: ControlMode) => void; onInteract: () => void },
+  options: {
+    onChange: (mode: ControlMode) => void;
+    onInteract: () => void;
+    onPick?: (x: number, y: number) => void;
+  },
 ) {
   const keys = new Set<string>(),
     taps = new Set<string>();
@@ -13,6 +17,7 @@ export function createFirstPersonControls(
     dragging: number | null = null,
     previousX = 0,
     previousY = 0,
+    dragDistance = 0,
     disposed = false,
     requestVersion = 0,
     pendingRequest: number | null = null;
@@ -75,6 +80,7 @@ export function createFirstPersonControls(
   };
   const onPointerDown = (event: PointerEvent) => {
     if (paused || event.button !== 0) return;
+    dragDistance = 0;
     if (event.pointerType === 'touch') {
       setMode('drag');
       element.parentElement?.focus();
@@ -82,6 +88,7 @@ export function createFirstPersonControls(
       enter();
       return;
     }
+    dragging = event.pointerId;
     if (document.pointerLockElement !== element) {
       dragging = event.pointerId;
       previousX = event.clientX;
@@ -94,13 +101,21 @@ export function createFirstPersonControls(
     if (document.pointerLockElement === element)
       look(event.movementX, event.movementY);
     else if (dragging === event.pointerId) {
+      dragDistance += Math.hypot(
+        event.clientX - previousX,
+        event.clientY - previousY,
+      );
       look(event.clientX - previousX, event.clientY - previousY);
       previousX = event.clientX;
       previousY = event.clientY;
     }
   };
   const stopDrag = (event: PointerEvent) => {
-    if (dragging === event.pointerId) dragging = null;
+    if (dragging === event.pointerId) {
+      dragging = null;
+      if (event.type === 'pointerup' && !paused && entered && dragDistance < 5)
+        options.onPick?.(event.clientX, event.clientY);
+    }
   };
   const onKeyDown = (event: KeyboardEvent) => {
     if (paused || event.ctrlKey || event.metaKey || event.altKey) return;

@@ -34,7 +34,7 @@ test('diagonal speed stays constant, long frames and walls cannot teleport the c
     const s = firstPersonStep(0, -1, 0, 0.05);
     p = movePlayer(p, s.x, s.z);
   }
-  assert.ok(p.z <= 3.65);
+  assert.ok(p.z <= 4.65);
 });
 test('look has vertical limits and interaction never skips an opaque first hit', () => {
   assert.equal(clampPitch(10), 1.4);
