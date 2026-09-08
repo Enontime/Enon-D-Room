@@ -1,5 +1,10 @@
 import * as THREE from 'three';
-import { type ObjectId, type Point } from './objects';
+import {
+  FURNITURE,
+  ROOM,
+  type ObjectId,
+  type Point,
+} from './objects';
 import { movePlayer } from '@/lib/player/movement';
 import {
   EYE_HEIGHT,
@@ -25,6 +30,7 @@ export type WorldController = {
   dispose: () => void;
   setPaused: (value: boolean) => void;
   setNight: (value: boolean) => void;
+  setBodyVisible: (value: boolean) => void;
   enter: () => void;
   reset: () => void;
   setTouch: (direction: string, pressed: boolean) => void;
@@ -139,16 +145,48 @@ export function createWorld(
       ];
       box(-5 + col * 2, 0.015, -4.75 + row * 0.5, 1.98, 0.06, 0.485, color);
     }
-  box(0, 1.65, -5.1, 12.4, 3.3, 0.24, palette.wall);
-  box(-6.1, 1.65, 0, 0.24, 3.3, 10.4, palette.side);
-  box(0, 0.15, -4.93, 12, 0.24, 0.12, 0x689a7b);
-  box(-5.94, 0.15, 0, 0.12, 0.24, 10, 0x689a7b);
+  box(0, 1.65, -ROOM.halfDepth - 0.1,
+    ROOM.halfWidth * 2 + 0.4, 3.3, 0.24, palette.wall);
+  box(-ROOM.halfWidth - 0.1, 1.65, 0,
+    0.24, 3.3, ROOM.halfDepth * 2 + 0.4, palette.side);
   // Continuous solid room envelope, including the walls previously cut away.
-  box(6.1, 1.65, 0, 0.24, 3.3, 10.4, palette.wall);
-  box(0, 1.65, 5.1, 12.4, 3.3, 0.24, palette.side);
+  box(ROOM.halfWidth + 0.1, 1.65, 0,
+    0.24, 3.3, ROOM.halfDepth * 2 + 0.4, palette.wall);
+  box(0, 1.65, ROOM.halfDepth + 0.1,
+    ROOM.halfWidth * 2 + 0.4, 3.3, 0.24, palette.side);
   box(0, 3.4, 0, 12.4, 0.24, 10.4, 0xd9d9b9);
-  box(5.94, 0.15, 0, 0.12, 0.24, 10, 0x689a7b);
-  box(0, 0.15, 4.93, 12, 0.24, 0.12, 0x689a7b);
+  // Leave gaps behind furniture so the skirting does not pass through its base.
+  const skirting = (
+    axis: 'x' | 'z',
+    fixed: number,
+    gapStart: number,
+    gapEnd: number,
+  ) => {
+    const extent = axis === 'x' ? ROOM.halfWidth : ROOM.halfDepth;
+    for (const [start, end] of [[-extent, gapStart], [gapEnd, extent]]) {
+      if (end <= start) continue;
+      const center = (start + end) / 2;
+      box(
+        axis === 'x' ? center : fixed,
+        0.15,
+        axis === 'z' ? center : fixed,
+        axis === 'x' ? end - start : 0.12,
+        0.24,
+        axis === 'z' ? end - start : 0.12,
+        0x689a7b,
+      );
+    }
+  };
+  skirting('x', -ROOM.halfDepth + 0.07,
+    FURNITURE.bed.x - FURNITURE.bed.width / 2, ROOM.halfWidth);
+  skirting('z', -ROOM.halfWidth + 0.06,
+    FURNITURE.cabinet.z - FURNITURE.cabinet.depth / 2,
+    FURNITURE.cabinet.z + FURNITURE.cabinet.depth / 2);
+  skirting('z', ROOM.halfWidth - 0.06,
+    -ROOM.halfDepth, FURNITURE.bed.z + 1.95);
+  skirting('x', ROOM.halfDepth - 0.07,
+    FURNITURE.tv.x - FURNITURE.tv.width / 2,
+    FURNITURE.tv.x + FURNITURE.tv.width / 2);
   for (const x of [-5.94, 5.94])
     box(x, 3.15, 0, 0.12, 0.18, 10, palette.darkWood);
   for (const z of [-4.93, 4.93])
@@ -175,11 +213,15 @@ export function createWorld(
   box(0.72, 2.04, -3.55, 0.35, 1.95, 0.3, 0xf1dfb2);
   box(3.18, 2.04, -3.55, 0.35, 1.95, 0.3, 0xf1dfb2);
   // Work desk and its terminal.
+  shiftX = FURNITURE.desk.x + 1.6;
+  shiftZ = FURNITURE.desk.z + 2.9;
   interactiveId = 'terminal';
   box(-1.6, 1.07, -2.9, 3.5, 0.18, 1.25, palette.wood);
   for (const x of [-3.05, -0.16])
-    for (const z of [-3.35, -2.45])
+    for (const z of [-3.34, -2.45])
       box(x, 0.55, z, 0.14, 1, 0.14, palette.darkWood);
+  // Keep the monitor just in front of the papers on the wall pinboard.
+  shiftZ += 0.01;
   box(-1.65, 1.25, -3.05, 0.6, 0.12, 0.4, palette.deep);
   box(-1.65, 1.43, -3.14, 0.12, 0.4, 0.12, palette.deep);
   box(-1.65, 1.82, -3.13, 1.27, 0.85, 0.3, 0xd9dbc1);
@@ -193,13 +235,14 @@ export function createWorld(
     new THREE.PlaneGeometry(0.96, 0.55),
     screenMaterial,
   );
-  screen.position.set(-1.65, 1.83, -3.945);
+  screen.position.set(-1.65 + shiftX, 1.83, -2.945 + shiftZ);
   screen.userData.interactiveId = 'terminal';
   scene.add(screen);
   box(-1.98, 1.99, -2.92, 0.07, 0.045, 0.025, 0xb7edbe);
   box(-1.91, 1.94, -2.92, 0.07, 0.045, 0.025, 0xb7edbe);
   box(-1.98, 1.89, -2.92, 0.07, 0.045, 0.025, 0xb7edbe);
   box(-1.62, 1.87, -2.92, 0.32, 0.025, 0.025, 0x81b38b);
+  shiftZ -= 0.01;
   box(-1.65, 1.2, -2.48, 1.1, 0.1, 0.36, 0xd8d5bc);
   for (let row = 0; row < 3; row++)
     for (let col = 0; col < 10; col++)
@@ -219,7 +262,7 @@ export function createWorld(
   box(-1.55, 0.53, -2.6, 0.65, 0.15, 0.55, 0x648e70);
   box(-1.55, 0.3, -2.6, 0.18, 0.55, 0.18, palette.darkWood);
   // Shelf and notebook on the left wall.
-  shiftX = -1;
+  shiftX = FURNITURE.cabinet.x + 4.25;
   shiftZ = 0;
   interactiveId = 'notes';
   box(-4.25, 0.54, -0.8, 1.15, 1.0, 3.7, palette.darkWood);
@@ -244,8 +287,8 @@ export function createWorld(
     );
   interactiveId = null;
   // Bed with a quilt; the mattress is a solid obstacle.
-  shiftX = 0.8;
-  shiftZ = -1;
+  shiftX = FURNITURE.bed.x - 3;
+  shiftZ = FURNITURE.bed.z + 1.6;
   box(3, 0.36, -1.6, 2.45, 0.62, 3.9, palette.darkWood);
   box(3, 0.78, -1.56, 2.32, 0.38, 3.68, 0xe8debd);
   box(3, 1.04, -0.89, 2.35, 0.2, 2.34, 0x6d967b);
@@ -306,7 +349,7 @@ export function createWorld(
     }
   };
   plant(-4.95, 2.8, 0, 1.15);
-  plant(-5.22, -0.73, 1.18, 0.65);
+  plant(FURNITURE.cabinet.x + 0.03, -0.73, 1.18, 0.65);
   // Wall pinboard and small framed art are objects in the room.
   shiftZ = -1;
   box(-2.65, 2.39, -3.88, 1.62, 1.05, 0.14, palette.darkWood);
@@ -464,6 +507,9 @@ export function createWorld(
     setNight(value) {
       night = value;
       ambient.color.set(value ? 0x91a5c3 : 0xe4f3e8);
+    },
+    setBodyVisible(value) {
+      body.setVisible(value);
     },
     reset() {
       position = { x: START_POSE.x, z: START_POSE.z };

@@ -19,9 +19,12 @@ import { TerminalApp } from '@/components/apps/terminal';
 import { NotesApp } from '@/components/apps/notes';
 import { TelevisionApp } from '@/components/apps/television';
 import { CubeApp } from '@/components/apps/cube';
+import { Switch } from '@/components/ui/switch';
 import { objects, PROFILE_URL, type ObjectId } from '@/lib/world/objects';
 import type { WorldController } from '@/lib/world/scene';
 import type { ControlMode } from '@/lib/player/controls';
+
+const BODY_VISIBILITY_KEY = 'enon-home.show-body.v1';
 
 export default function HomePage() {
   const mount = useRef<HTMLDivElement>(null),
@@ -35,6 +38,8 @@ export default function HomePage() {
   const [mode, setMode] = useState<ControlMode>('idle'),
     [hasEntered, setHasEntered] = useState(false);
   const [clock, setClock] = useState('--:--');
+  const [showBody, setShowBody] = useState(false);
+  const showBodyRef = useRef(false);
   const activeRef = useRef(active),
     openRef = useRef<(id: ObjectId) => void>(() => {});
   openRef.current = (id) => {
@@ -49,6 +54,13 @@ export default function HomePage() {
   };
   useEffect(() => {
     let disposed = false;
+    try {
+      const saved = localStorage.getItem(BODY_VISIBILITY_KEY) === 'true';
+      showBodyRef.current = saved;
+      setShowBody(saved);
+    } catch {
+      // Keep the default when this browser does not allow local storage.
+    }
     import('@/lib/world/scene')
       .then(({ createWorld }) => {
         if (disposed || !mount.current) return;
@@ -61,6 +73,7 @@ export default function HomePage() {
             if (value !== 'idle') setHasEntered(true);
           },
         });
+        world.current.setBodyVisible(showBodyRef.current);
         setReady(true);
       })
       .catch(() =>
@@ -106,6 +119,16 @@ export default function HomePage() {
   const currentObject = nearby
     ? objects.find((item) => item.id === nearby)
     : null;
+  const changeBodyVisibility = (value: boolean) => {
+    showBodyRef.current = value;
+    setShowBody(value);
+    world.current?.setBodyVisible(value);
+    try {
+      localStorage.setItem(BODY_VISIBILITY_KEY, String(value));
+    } catch {
+      // The setting still applies to this visit when storage is unavailable.
+    }
+  };
   return (
     <main className={`home-shell fps-shell ${night ? 'night' : ''}`}>
       <header className="topbar">
@@ -129,7 +152,8 @@ export default function HomePage() {
           <button
             className="icon-button"
             onClick={() => setActive('help')}
-            aria-label="操作指南"
+            aria-label="操作指南与设置"
+            title="操作指南与设置"
           >
             <Keyboard size={21} />
           </button>
@@ -305,7 +329,7 @@ export default function HomePage() {
                         ? 'RUBIK / 三阶魔方'
                         : active === 'profile'
                           ? 'ENON / 个人主页'
-                          : 'HOW TO PLAY / 操作指南'}
+                          : 'HOW TO PLAY / 操作指南与设置'}
               </DialogTitle>
             </div>
             <DialogClose
@@ -326,7 +350,7 @@ export default function HomePage() {
                     ? '转动六面、打乱和撤销，玩真正的三阶魔方。'
                     : active === 'profile'
                       ? '打开 Enon 的个人网站。'
-                      : '探索房间的操作方式。'}
+                      : '探索房间的操作方式和第一人称显示设置。'}
             按 Escape 返回房间。
           </DialogDescription>
           {active === 'terminal' && <TerminalApp />}
@@ -354,11 +378,26 @@ export default function HomePage() {
                 你正站在房间内部。点击进入后，用鼠标环顾四周，WASD
                 沿视线方向行走。
               </p>
+              <div className="body-setting">
+                <div>
+                  <label htmlFor="show-player-body">低头显示身体和腿</label>
+                  <p id="show-player-body-description">
+                    关闭时保留第一人称手臂，设置会自动记住。
+                  </p>
+                </div>
+                <Switch
+                  id="show-player-body"
+                  className="body-visibility-switch"
+                  checked={showBody}
+                  onCheckedChange={changeBodyVisibility}
+                  aria-describedby="show-player-body-description"
+                />
+              </div>
               <div className="help-row">
                 <span>
                   <kbd>SPACE</kbd> / 触屏跳跃按钮
                 </span>
-                <span>跳跃，低头可看见身体和腿</span>
+                <span>跳跃</span>
               </div>
               <div className="help-row">
                 <span>

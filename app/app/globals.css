@@ -604,6 +604,44 @@ kbd {
 .help-note {
   margin-top: 22px;
 }
+.body-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 20px 0 8px;
+  padding: 16px;
+  border: 2px solid #becdae;
+  background: #e4ebd7;
+}
+.body-setting label {
+  display: block;
+  cursor: pointer;
+  font-size: 16px;
+  color: #36553e;
+}
+.body-setting p {
+  margin: 5px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.body-visibility-switch[data-slot='switch'] {
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  border: 2px solid #66805c;
+  border-radius: 0;
+  background: #b2bea4;
+}
+.body-visibility-switch[data-checked] {
+  background: #3f775d;
+}
+.body-visibility-switch [data-slot='switch-thumb'] {
+  width: 18px;
+  height: 18px;
+  border-radius: 0;
+  background: #f4efd6;
+}
 .terminal-content {
   background: #172d26;
   color: #cfe5c4;

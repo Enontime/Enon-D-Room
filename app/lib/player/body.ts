@@ -7,6 +7,7 @@ export function createPlayerBody(
   material: (color: number) => THREE.MeshStandardMaterial,
 ) {
   const body = new THREE.Group();
+  body.visible = false;
   scene.add(body);
   camera.layers.enable(1);
   const box = (
@@ -57,7 +58,12 @@ export function createPlayerBody(
   box(hand, 0, -0.17, 0.015, 0.19, 0.16, 0.21, 0x368f94);
   hand.rotation.set(-0.3, 0, -0.18);
   let gait = 0;
+  let showBody = false;
   return {
+    setVisible(value: boolean) {
+      showBody = value;
+      body.visible = value;
+    },
     update(
       position: Point,
       height: number,
@@ -71,13 +77,17 @@ export function createPlayerBody(
       const swing = moving ? Math.sin(gait) * 0.42 : 0;
       // Put the eyes slightly ahead of the chest, so looking down reveals legs
       // instead of filling the view with the top of the torso.
-      body.position.set(position.x+Math.sin(yaw)*.24, height + 0.045, position.z+Math.cos(yaw)*.24);
+      body.position.set(
+        position.x + Math.sin(yaw) * 0.24,
+        height + 0.045,
+        position.z + Math.cos(yaw) * 0.24,
+      );
       body.rotation.y = yaw;
       legs[0].rotation.x = airborne ? -0.23 : swing;
       legs[1].rotation.x = airborne ? 0.23 : -swing;
       arms[0].rotation.x = -swing * 0.7;
       arms[1].rotation.x = swing * 0.7;
-      hand.visible = pitch > -0.62;
+      hand.visible = !showBody || pitch > -0.62;
       hand.position.set(
         Math.min(0.32, camera.aspect * 0.25) +
           (moving ? Math.sin(gait) * 0.012 : 0),

@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { FACE_COLORS, FACE_NORMALS, FACES, solvedCube } from '../games/cube';
-import type { ObjectId } from './objects';
+import { FURNITURE, type ObjectId } from './objects';
 
 // Functional props are real meshes, so a ray cannot select through their backs.
 export function addRoomDetails(scene: THREE.Scene) {
@@ -154,7 +154,7 @@ export function addRoomDetails(scene: THREE.Scene) {
   };
   tick();
   // Television faces into the room from the entrance wall.
-  const tv = groupAt(-3.1, 0, 4.55, Math.PI);
+  const tv = groupAt(FURNITURE.tv.x, 0, FURNITURE.tv.z, Math.PI);
   box(tv, 0, 0.44, 0, 2.9, 0.72, 0.65, 0x755338, 'tv');
   box(tv, 0, 0.84, 0, 3.0, 0.12, 0.73, 0xab8051, 'tv');
   for (const x of [-0.78, 0.78])
