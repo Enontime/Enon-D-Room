@@ -380,7 +380,10 @@ export function createWorld(
     frame = 0,
     lastTime = performance.now();
   const controls = createFirstPersonControls(renderer.domElement, {
-    onChange: callbacks.onControlChange,
+    onChange: (mode) => {
+      if (mode === 'idle') body.cancelSwing();
+      callbacks.onControlChange(mode);
+    },
     onInteract: () => interact(nearby),
     onPick: (clientX, clientY) => {
       const rect = renderer.domElement.getBoundingClientRect();
@@ -459,6 +462,7 @@ export function createWorld(
       moving,
       dt,
       !jumpState.grounded,
+      movement.swing,
     );
     details.tick();
     scene.updateMatrixWorld(true);
@@ -515,6 +519,7 @@ export function createWorld(
       position = { x: START_POSE.x, z: START_POSE.z };
       controls.reset();
       jumpState = GROUND;
+      body.cancelSwing();
     },
     setTouch(direction, pressed) {
       controls.setTouch(direction, pressed);

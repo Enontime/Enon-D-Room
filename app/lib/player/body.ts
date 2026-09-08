@@ -44,9 +44,10 @@ export function createPlayerBody(
     const pivot = new THREE.Group();
     pivot.position.set(x, 1.42, 0.055);
     body.add(pivot);
-    box(pivot, 0, -0.12, 0, 0.21, 0.26, 0.27, 0x368f94);
-    box(pivot, 0, -0.43, 0, 0.2, 0.38, 0.25, 0xbe8d66);
-    box(pivot, 0, -0.63, -0.014, 0.2, 0.09, 0.27, 0xc3936e);
+    // White and light-grey texels use the room's nearest-filtered pixel grain.
+    box(pivot, 0, -0.12, 0, 0.21, 0.26, 0.27, 0xe3e7ed);
+    box(pivot, 0, -0.43, 0, 0.2, 0.38, 0.25, 0xf5f6f8);
+    box(pivot, 0, -0.63, -0.014, 0.2, 0.09, 0.27, 0xffffff);
     return pivot;
   });
   // A separate view hand stays in the lower-right corner while looking ahead.
@@ -54,12 +55,17 @@ export function createPlayerBody(
   camera.add(hand);
   scene.add(camera);
   hand.layers.set(1);
-  box(hand, 0, 0.08, 0, 0.18, 0.34, 0.2, 0xc3936e);
-  box(hand, 0, -0.17, 0.015, 0.19, 0.16, 0.21, 0x368f94);
+  box(hand, 0, 0.08, 0, 0.18, 0.34, 0.2, 0xf5f6f8);
+  box(hand, 0, -0.17, 0.015, 0.19, 0.16, 0.21, 0xe3e7ed);
   hand.rotation.set(-0.3, 0, -0.18);
   let gait = 0;
   let showBody = false;
+  let swingProgress = 1;
+  const swingDuration = 0.32;
   return {
+    cancelSwing() {
+      swingProgress = 1;
+    },
     setVisible(value: boolean) {
       showBody = value;
       body.visible = value;
@@ -72,9 +78,15 @@ export function createPlayerBody(
       moving: boolean,
       dt: number,
       airborne: boolean,
+      swingRequested: boolean,
     ) {
       if (moving) gait += dt * 9;
       const swing = moving ? Math.sin(gait) * 0.42 : 0;
+      // Finish each stroke before accepting another, including when held down.
+      if (swingRequested && swingProgress >= 1) swingProgress = 0;
+      swingProgress = Math.min(1, swingProgress + dt / swingDuration);
+      const strike = Math.sin(Math.sqrt(swingProgress) * Math.PI);
+      const lift = Math.sin(swingProgress * Math.PI);
       // Put the eyes slightly ahead of the chest, so looking down reveals legs
       // instead of filling the view with the top of the torso.
       body.position.set(
@@ -86,15 +98,23 @@ export function createPlayerBody(
       legs[0].rotation.x = airborne ? -0.23 : swing;
       legs[1].rotation.x = airborne ? 0.23 : -swing;
       arms[0].rotation.x = -swing * 0.7;
-      arms[1].rotation.x = swing * 0.7;
+      arms[1].rotation.set(
+        swing * 0.7 + strike * 1.35,
+        -strike * 0.15,
+        -strike * 0.25,
+      );
       hand.visible = !showBody || pitch > -0.62;
       hand.position.set(
         Math.min(0.32, camera.aspect * 0.25) +
-          (moving ? Math.sin(gait) * 0.012 : 0),
-        -0.43 + (moving ? Math.cos(gait * 2) * 0.012 : 0),
-        -0.67,
+          (moving ? Math.sin(gait) * 0.012 : 0) - strike * 0.33,
+        -0.43 + (moving ? Math.cos(gait * 2) * 0.012 : 0) + lift * 0.15,
+        -0.67 - strike * 0.18,
       );
-      hand.rotation.z = -0.18 + (moving ? Math.sin(gait) * 0.025 : 0);
+      hand.rotation.set(
+        -0.3 - strike * 0.95,
+        -strike * 0.4,
+        -0.18 + (moving ? Math.sin(gait) * 0.025 : 0) + strike * 0.55,
+      );
       // The matching world arm is visible when looking down at the body.
       arms[1].visible = !hand.visible;
     },

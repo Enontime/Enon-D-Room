@@ -15,10 +15,13 @@ export function createFirstPersonControls(
     entered = false,
     paused = false,
     dragging: number | null = null,
+    dragButton: number | null = null,
+    swingPointer: number | null = null,
     previousX = 0,
     previousY = 0,
     dragDistance = 0,
     jumpQueued = false,
+    swingQueued = false,
     disposed = false,
     requestVersion = 0,
     pendingRequest: number | null = null;
@@ -27,10 +30,18 @@ export function createFirstPersonControls(
     if (!disposed) options.onChange(mode);
   };
   const clear = () => {
+    const captures = [dragging, swingPointer];
     keys.clear();
     taps.clear();
     dragging = null;
+    dragButton = null;
+    swingPointer = null;
     jumpQueued = false;
+    swingQueued = false;
+    for (const pointer of captures) {
+      if (pointer !== null && element.hasPointerCapture(pointer))
+        element.releasePointerCapture(pointer);
+    }
   };
   const pointerChange = () => {
     clear();
@@ -81,18 +92,29 @@ export function createFirstPersonControls(
     pitch = clampPitch(pitch - y * 0.0025);
   };
   const onPointerDown = (event: PointerEvent) => {
-    if (paused || event.button !== 0) return;
-    dragDistance = 0;
-    if (event.pointerType === 'touch') {
+    if (paused || disposed || !event.isPrimary) return;
+    const touch = event.pointerType === 'touch';
+    if (event.button !== 0 && (touch || event.button !== 2)) return;
+    event.preventDefault();
+    if (touch) {
       setMode('drag');
       element.parentElement?.focus();
     } else if (!entered) {
       enter();
       return;
     }
+    if (!touch && event.button === 0) {
+      swingQueued = true;
+      swingPointer = event.pointerId;
+      if (document.pointerLockElement !== element)
+        element.setPointerCapture(event.pointerId);
+      return;
+    }
+    // Right-button dragging looks around; touch keeps its existing gestures.
+    dragDistance = 0;
     dragging = event.pointerId;
+    dragButton = event.button;
     if (document.pointerLockElement !== element) {
-      dragging = event.pointerId;
       previousX = event.clientX;
       previousY = event.clientY;
       element.setPointerCapture(event.pointerId);
@@ -100,6 +122,8 @@ export function createFirstPersonControls(
   };
   const onPointerMove = (event: PointerEvent) => {
     if (paused || !entered) return;
+    if (swingPointer === event.pointerId && (event.buttons & 1) === 0)
+      swingPointer = null;
     if (document.pointerLockElement === element)
       look(event.movementX, event.movementY);
     else if (dragging === event.pointerId) {
@@ -113,12 +137,33 @@ export function createFirstPersonControls(
     }
   };
   const stopDrag = (event: PointerEvent) => {
-    if (dragging === event.pointerId) {
-      dragging = null;
-      if (event.type === 'pointerup' && !paused && entered && dragDistance < 5)
-        options.onPick?.(event.clientX, event.clientY);
+    if (
+      swingPointer === event.pointerId &&
+      (event.type !== 'pointerup' || event.button === 0)
+    ) {
+      swingPointer = null;
+      // Preserve a quick click until the next frame, but discard cancellations.
+      if (event.type !== 'pointerup') swingQueued = false;
     }
+    if (
+      dragging === event.pointerId &&
+      (event.type !== 'pointerup' || event.button === dragButton)
+    ) {
+      const pick =
+        event.type === 'pointerup' &&
+        event.button === dragButton &&
+        !paused && entered && dragDistance < 5;
+      dragging = null;
+      dragButton = null;
+      if (pick) options.onPick?.(event.clientX, event.clientY);
+    }
+    if (
+      (event.type !== 'pointerup' || event.buttons === 0) &&
+      element.hasPointerCapture(event.pointerId)
+    )
+      element.releasePointerCapture(event.pointerId);
   };
+  const onContextMenu = (event: MouseEvent) => event.preventDefault();
   const onKeyDown = (event: KeyboardEvent) => {
     if (paused || event.ctrlKey || event.metaKey || event.altKey) return;
     const target = event.target as HTMLElement;
@@ -169,8 +214,10 @@ export function createFirstPersonControls(
   };
   element.addEventListener('pointerdown', onPointerDown);
   element.addEventListener('pointermove', onPointerMove);
-  element.addEventListener('pointerup', stopDrag);
-  element.addEventListener('pointercancel', stopDrag);
+  element.addEventListener('lostpointercapture', stopDrag);
+  element.addEventListener('contextmenu', onContextMenu);
+  window.addEventListener('pointerup', stopDrag);
+  window.addEventListener('pointercancel', stopDrag);
   document.addEventListener('pointerlockchange', pointerChange);
   document.addEventListener('pointerlockerror', pointerError);
   document.addEventListener('visibilitychange', onVisibility);
@@ -183,7 +230,8 @@ export function createFirstPersonControls(
       return { yaw, pitch };
     },
     getMovement(delta: number) {
-      if (!entered || paused) return { strafe: 0, forward: 0, jump: false };
+      if (!entered || paused)
+        return { strafe: 0, forward: 0, jump: false, swing: false };
       const held = (key: string) => keys.has(key) || taps.has(key);
       yaw += (Number(held('j')) - Number(held('l'))) * delta * 1.65;
       pitch = clampPitch(
@@ -191,6 +239,7 @@ export function createFirstPersonControls(
       );
       const movement = {
         jump: jumpQueued,
+        swing: swingQueued || swingPointer !== null,
         strafe:
           Number(held('d') || held('arrowright') || held('right')) -
           Number(held('a') || held('arrowleft') || held('left')),
@@ -200,6 +249,7 @@ export function createFirstPersonControls(
       };
       taps.clear();
       jumpQueued = false;
+      swingQueued = false;
       return movement;
     },
     setPaused(value: boolean) {
@@ -230,8 +280,10 @@ export function createFirstPersonControls(
       release();
       element.removeEventListener('pointerdown', onPointerDown);
       element.removeEventListener('pointermove', onPointerMove);
-      element.removeEventListener('pointerup', stopDrag);
-      element.removeEventListener('pointercancel', stopDrag);
+      element.removeEventListener('lostpointercapture', stopDrag);
+      element.removeEventListener('contextmenu', onContextMenu);
+      window.removeEventListener('pointerup', stopDrag);
+      window.removeEventListener('pointercancel', stopDrag);
       document.removeEventListener('pointerlockchange', pointerChange);
       document.removeEventListener('pointerlockerror', pointerError);
       document.removeEventListener('visibilitychange', onVisibility);

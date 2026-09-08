@@ -164,7 +164,7 @@ export default function HomePage() {
           ref={mount}
           className="world-canvas"
           tabIndex={0}
-          aria-label="第一人称房间：点击进入，鼠标环顾，WASD 移动，空格跳跃，IJKL 转动视角，E 交互，Esc 释放鼠标。"
+          aria-label="第一人称房间：点击进入，鼠标环顾，WASD 移动，空格跳跃，左键挥手，右键或 E 使用物品，IJKL 转动视角，Esc 释放鼠标。"
         />
         <div className="room-heading">
           <div className="eyebrow">
@@ -198,12 +198,12 @@ export default function HomePage() {
               <MousePointer2 size={18} />
               {hasEntered ? '继续探索' : '进入房间'}
             </button>
-            <span>WASD 行走 · 空格跳跃 · E 使用物品</span>
+            <span>WASD 行走 · 空格跳跃 · 左键挥手 · E 使用</span>
           </div>
         )}
         {mode === 'drag' && !active && (
           <div className="look-hint">
-            按住鼠标或触屏拖动环顾 · IJKL 也可转动视角
+            按住右键或触屏拖动环顾 · IJKL 也可转动视角
           </div>
         )}
         <div
@@ -289,6 +289,9 @@ export default function HomePage() {
           </span>
           <span>
             <MousePointer2 size={16} /> 环顾
+          </span>
+          <span>
+            <kbd>左键</kbd> 挥手
           </span>
           <span>
             <kbd>E</kbd> 使用
@@ -407,7 +410,13 @@ export default function HomePage() {
               </div>
               <div className="help-row">
                 <span>
-                  <kbd>E</kbd> / 点击「打开」
+                  <kbd>左键</kbd> / 按住连续挥动
+                </span>
+                <span>挥手</span>
+              </div>
+              <div className="help-row">
+                <span>
+                  <kbd>右键</kbd> / <kbd>E</kbd> /「打开」
                 </span>
                 <span>使用身边的物品</span>
               </div>
@@ -419,8 +428,9 @@ export default function HomePage() {
               </div>
               <p className="help-note">
                 门左边是小游戏电视，门右边是个人主页展示板；右侧小推车上放着可玩的魔方。
-                将准星对准近处的物品按 E，或直接点击物品。Esc
-                释放鼠标；关闭应用后，点击「继续探索」。鼠标锁定不可用时，可按住鼠标拖动，或用
+                将准星对准近处的物品按 E，或用右键点击物品；触屏可轻点物品。
+                左键挥手暂时只有动作，房间物品不会被破坏。Esc
+                释放鼠标；关闭应用后，点击「继续探索」。鼠标锁定不可用时，可按住右键拖动，或用
                 I / J / K / L 转动视角。
               </p>
             </div>
