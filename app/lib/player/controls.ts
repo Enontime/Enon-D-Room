@@ -18,6 +18,7 @@ export function createFirstPersonControls(
     previousX = 0,
     previousY = 0,
     dragDistance = 0,
+    jumpQueued = false,
     disposed = false,
     requestVersion = 0,
     pendingRequest: number | null = null;
@@ -29,6 +30,7 @@ export function createFirstPersonControls(
     keys.clear();
     taps.clear();
     dragging = null;
+    jumpQueued = false;
   };
   const pointerChange = () => {
     clear();
@@ -131,6 +133,10 @@ export function createFirstPersonControls(
       return;
     }
     if (!entered) return;
+    if (key === ' ') {
+      event.preventDefault();
+      if (!event.repeat) jumpQueued = true;
+    }
     if (
       [
         'w',
@@ -177,13 +183,14 @@ export function createFirstPersonControls(
       return { yaw, pitch };
     },
     getMovement(delta: number) {
-      if (!entered || paused) return { strafe: 0, forward: 0 };
+      if (!entered || paused) return { strafe: 0, forward: 0, jump: false };
       const held = (key: string) => keys.has(key) || taps.has(key);
       yaw += (Number(held('j')) - Number(held('l'))) * delta * 1.65;
       pitch = clampPitch(
         pitch + (Number(held('i')) - Number(held('k'))) * delta * 1.65,
       );
       const movement = {
+        jump: jumpQueued,
         strafe:
           Number(held('d') || held('arrowright') || held('right')) -
           Number(held('a') || held('arrowleft') || held('left')),
@@ -192,6 +199,7 @@ export function createFirstPersonControls(
           Number(held('s') || held('arrowdown') || held('down')),
       };
       taps.clear();
+      jumpQueued = false;
       return movement;
     },
     setPaused(value: boolean) {
@@ -210,6 +218,12 @@ export function createFirstPersonControls(
         keys.add(direction);
         taps.add(direction);
       } else keys.delete(direction);
+    },
+    jump() {
+      if (entered && !paused) {
+        element.parentElement?.focus();
+        jumpQueued = true;
+      }
     },
     dispose() {
       disposed = true;

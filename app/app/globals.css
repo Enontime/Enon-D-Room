@@ -1366,6 +1366,36 @@ kbd {
   display: block;
   touch-action: none;
 }
+.cube-renderer {
+  position: absolute;
+  inset: 0;
+}
+.touch-jump {
+  display: none;
+}
+@media (max-width: 680px) {
+  .touch-jump {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    right: 24px;
+    bottom: 84px;
+    width: 56px;
+    height: 64px;
+    background: #edf2dbdf;
+    border: 1px solid #9cad7b;
+    color: #345741;
+    z-index: 4;
+    font-size: 23px;
+    touch-action: none;
+  }
+  .touch-jump span {
+    font-size: 12px;
+  }
+}
 .cube-loading {
   position: absolute;
   inset: 0;

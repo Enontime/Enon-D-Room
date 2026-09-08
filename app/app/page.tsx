@@ -140,7 +140,7 @@ export default function HomePage() {
           ref={mount}
           className="world-canvas"
           tabIndex={0}
-          aria-label="第一人称房间：点击进入，鼠标环顾，WASD 移动，IJKL 转动视角，E 交互，Esc 释放鼠标。"
+          aria-label="第一人称房间：点击进入，鼠标环顾，WASD 移动，空格跳跃，IJKL 转动视角，E 交互，Esc 释放鼠标。"
         />
         <div className="room-heading">
           <div className="eyebrow">
@@ -174,7 +174,7 @@ export default function HomePage() {
               <MousePointer2 size={18} />
               {hasEntered ? '继续探索' : '进入房间'}
             </button>
-            <span>WASD 行走 · 鼠标环顾 · E 使用物品</span>
+            <span>WASD 行走 · 空格跳跃 · E 使用物品</span>
           </div>
         )}
         {mode === 'drag' && !active && (
@@ -226,6 +226,21 @@ export default function HomePage() {
             )}
           </div>
         )}
+        {mode !== 'idle' && !active && (
+          <button
+            className="touch-jump"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              world.current?.jump();
+            }}
+            onClick={(e) => {
+              if (e.detail === 0) world.current?.jump();
+            }}
+            aria-label="跳跃"
+          >
+            ↑<span>跳跃</span>
+          </button>
+        )}
       </section>
       <footer className="bottom-bar">
         <div className="location">
@@ -253,6 +268,9 @@ export default function HomePage() {
           </span>
           <span>
             <kbd>E</kbd> 使用
+          </span>
+          <span>
+            <kbd>SPACE</kbd> 跳跃
           </span>
           <span>
             <kbd>ESC</kbd> 鼠标
@@ -336,6 +354,12 @@ export default function HomePage() {
                 你正站在房间内部。点击进入后，用鼠标环顾四周，WASD
                 沿视线方向行走。
               </p>
+              <div className="help-row">
+                <span>
+                  <kbd>SPACE</kbd> / 触屏跳跃按钮
+                </span>
+                <span>跳跃，低头可看见身体和腿</span>
+              </div>
               <div className="help-row">
                 <span>
                   <kbd>WASD</kbd> / <kbd>↑ ← ↓ →</kbd>

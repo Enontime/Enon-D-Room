@@ -32,7 +32,9 @@ export function CubeApp() {
         view.current.paint(current.current);
         setReady(true);
       })
-      .catch(() => setError('魔方加载失败，请关闭后重试。'));
+      .catch(() => {
+        if (!disposed) setError('魔方加载失败，请关闭后重试。');
+      });
     return () => {
       disposed = true;
       view.current?.dispose();
@@ -70,13 +72,13 @@ export function CubeApp() {
       </div>
       <div
         className="cube-stage"
-        ref={host}
         role="img"
         aria-label={`可拖动查看的三阶魔方，${isSolved(cube) ? '已复原' : '未复原'}`}
       >
-        {(!ready || error) && (
+        <div className="cube-renderer" ref={host} />
+        {!ready || error ? (
           <div className="cube-loading">{error || '正在拿起魔方…'}</div>
-        )}
+        ) : null}
       </div>
       <p className="cube-instruction">
         拖动查看六面。按钮按色心转动对应面；↻ 顺时针，↺ 逆时针。

@@ -12,6 +12,8 @@ import {
 } from '@/lib/player/controls';
 import { getFocusedObject } from '@/lib/interactions/detection';
 import { addRoomDetails } from './decor';
+import { GROUND, stepJump, type JumpState } from '@/lib/player/jump';
+import { createPlayerBody } from '@/lib/player/body';
 
 type Callbacks = {
   onNearby: (id: ObjectId | null) => void;
@@ -26,6 +28,7 @@ export type WorldController = {
   enter: () => void;
   reset: () => void;
   setTouch: (direction: string, pressed: boolean) => void;
+  jump: () => void;
 };
 
 export function createWorld(
@@ -323,6 +326,8 @@ export function createWorld(
   shiftX = 0;
   shiftZ = 0;
   const details = addRoomDetails(scene);
+  const body = createPlayerBody(scene, camera, material);
+  let jumpState: JumpState = GROUND;
   // The camera is the player: there is no external avatar or orbit view.
   let position: Point = { x: START_POSE.x, z: START_POSE.z },
     paused = false,
@@ -399,9 +404,19 @@ export function createWorld(
     const moving =
       Math.hypot(next.x - position.x, next.z - position.z) > 0.0001;
     position = next;
-    camera.position.set(position.x, EYE_HEIGHT, position.z);
+    if (!paused) jumpState = stepJump(jumpState, movement.jump, dt);
+    camera.position.set(position.x, EYE_HEIGHT + jumpState.height, position.z);
     camera.rotation.set(pose.pitch, pose.yaw, 0);
     camera.updateMatrixWorld();
+    body.update(
+      position,
+      jumpState.height,
+      pose.yaw,
+      pose.pitch,
+      moving,
+      dt,
+      !jumpState.grounded,
+    );
     details.tick();
     scene.updateMatrixWorld(true);
     raycaster.setFromCamera(center, camera);
@@ -453,9 +468,13 @@ export function createWorld(
     reset() {
       position = { x: START_POSE.x, z: START_POSE.z };
       controls.reset();
+      jumpState = GROUND;
     },
     setTouch(direction, pressed) {
       controls.setTouch(direction, pressed);
+    },
+    jump() {
+      controls.jump();
     },
     dispose() {
       cancelAnimationFrame(frame);
@@ -463,6 +482,7 @@ export function createWorld(
       observer.disconnect();
       controls.dispose();
       details.dispose();
+      body.dispose();
       scene.traverse((object) => {
         if (object instanceof THREE.Mesh) object.geometry.dispose();
       });
