@@ -1,0 +1,10 @@
+# Generated TypeScript cache
+*.tsbuildinfo
+
+# Local environment and machine-specific files
+.env
+.env.*
+!.env.example
+.local/
+.DS_Store
+Thumbs.db
