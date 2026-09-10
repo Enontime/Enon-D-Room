@@ -1,12 +1,16 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { canStand, movePlayer, findPath } from '../lib/player/movement.ts';
-import { ROOM, objects, solids } from '../lib/world/objects.ts';
+import { FURNITURE, ROOM, objects, solids } from '../lib/world/objects.ts';
 import { getNearby } from '../lib/interactions/detection.ts';
 
 test('movement cannot tunnel through furniture even at a very large timestep', () => {
-  const point = movePlayer({ x: 0, z: 1 }, 0, -30);
-  assert.ok(point.z >= -3.025);
+  const start = { x: FURNITURE.desk.x, z: 1 };
+  const deskFront = FURNITURE.desk.z + FURNITURE.desk.depth / 2;
+  const point = movePlayer(start, 0, -30);
+  assert.equal(point.x, start.x);
+  assert.ok(point.z < start.z, 'the player must advance toward the desk');
+  assert.ok(point.z >= deskFront, 'the player must stop in front of the desk');
   assert.ok(canStand(point.x, point.z));
 });
 test('all room boundaries stop movement, with sliding along furniture', () => {

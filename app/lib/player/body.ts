@@ -1,5 +1,7 @@
 import * as THREE from 'three';
 import type { Point } from '../world/objects';
+import { ARM_CONFIG } from './arm-config';
+import { createArmMotion } from './arm-motion';
 
 export function createPlayerBody(
   scene: THREE.Scene,
@@ -10,6 +12,19 @@ export function createPlayerBody(
   body.visible = false;
   scene.add(body);
   camera.layers.enable(1);
+  // Solid face colours, with no skin texture, noise or lighting gradients.
+  const { base, light, shade } = ARM_CONFIG.skin;
+  const skinMaterials = (overlay: boolean) =>
+    [shade, shade, light, shade, base, base].map((color) =>
+      new THREE.MeshBasicMaterial({
+        color,
+        toneMapped: false,
+        depthTest: !overlay,
+        depthWrite: !overlay,
+      }),
+    );
+  const armMaterials = skinMaterials(false);
+  const viewMaterials = skinMaterials(true);
   const box = (
     parent: THREE.Object3D,
     x: number,
@@ -18,11 +33,11 @@ export function createPlayerBody(
     w: number,
     h: number,
     d: number,
-    color: number,
+    surface: number | THREE.Material | THREE.Material[],
   ) => {
     const mesh = new THREE.Mesh(
       new THREE.BoxGeometry(w, h, d),
-      material(color),
+      typeof surface === 'number' ? material(surface) : surface,
     );
     mesh.position.set(x, y, z);
     mesh.layers.set(1);
@@ -40,28 +55,49 @@ export function createPlayerBody(
     box(pivot, 0, -0.71, -0.035, 0.235, 0.15, 0.34, 0x334347);
     return pivot;
   });
-  const arms = [-0.36, 0.36].map((x) => {
+  const bodyArm = ARM_CONFIG.body;
+  const thickness = bodyArm.thickness;
+  const shoulderX = 0.25 + thickness.width / 2;
+  const arms = [-shoulderX, shoulderX].map((x) => {
     const pivot = new THREE.Group();
-    pivot.position.set(x, 1.42, 0.055);
+    pivot.position.set(x, bodyArm.shoulder.y, bodyArm.shoulder.z);
     body.add(pivot);
-    // White and light-grey texels use the room's nearest-filtered pixel grain.
-    box(pivot, 0, -0.12, 0, 0.21, 0.26, 0.27, 0xe3e7ed);
-    box(pivot, 0, -0.43, 0, 0.2, 0.38, 0.25, 0xf5f6f8);
-    box(pivot, 0, -0.63, -0.014, 0.2, 0.09, 0.27, 0xffffff);
+    for (const part of bodyArm.parts)
+      box(pivot, part.position[0], part.position[1], part.position[2],
+        thickness.width, part.length, thickness.depth, armMaterials);
     return pivot;
   });
-  // A separate view hand stays in the lower-right corner while looking ahead.
+  // Keep the view model's elbow outside the frame; only hand and forearm extend in.
+  const view = ARM_CONFIG.view;
+  const viewThickness = view.thickness;
   const hand = new THREE.Group();
   camera.add(hand);
   scene.add(camera);
   hand.layers.set(1);
-  box(hand, 0, 0.08, 0, 0.18, 0.34, 0.2, 0xf5f6f8);
-  box(hand, 0, -0.17, 0.015, 0.19, 0.16, 0.21, 0xe3e7ed);
-  hand.rotation.set(-0.3, 0, -0.18);
+  // Keep camera-relative idle placement, walk bob and swing on separate nodes.
+  const movementBob = new THREE.Group();
+  const swingPose = new THREE.Group();
+  hand.add(movementBob);
+  movementBob.add(swingPose);
+  const pivotPosition = new THREE.Vector3(
+    view.pivotPosition.x, view.pivotPosition.y, view.pivotPosition.z,
+  );
+  const armModel = new THREE.Group();
+  armModel.position.copy(pivotPosition).multiplyScalar(-ARM_CONFIG.scale);
+  armModel.scale.setScalar(ARM_CONFIG.scale);
+  swingPose.add(armModel);
+  // With depth testing disabled, internal end caps of overlapping boxes showed
+  // through as a third face. Keep the same outer dimensions in one continuous mesh.
+  const armBottom = view.forearm.position[1] - view.forearm.length / 2;
+  const armTop = view.hand.position[1] + view.hand.length / 2;
+  const viewMesh = box(armModel, view.hand.position[0], (armBottom + armTop) / 2,
+    view.hand.position[2], viewThickness.width, armTop - armBottom, viewThickness.depth, viewMaterials);
+  viewMesh.renderOrder = 10;
+  const motion = createArmMotion(camera);
   let gait = 0;
+  let bobWeight = 0;
   let showBody = false;
   let swingProgress = 1;
-  const swingDuration = 0.32;
   return {
     cancelSwing() {
       swingProgress = 1;
@@ -81,12 +117,15 @@ export function createPlayerBody(
       swingRequested: boolean,
     ) {
       if (moving) gait += dt * 9;
+      bobWeight = THREE.MathUtils.damp(
+        bobWeight, moving ? 1 : 0, view.walkBob.smoothing, dt,
+      );
       const swing = moving ? Math.sin(gait) * 0.42 : 0;
       // Finish each stroke before accepting another, including when held down.
       if (swingRequested && swingProgress >= 1) swingProgress = 0;
-      swingProgress = Math.min(1, swingProgress + dt / swingDuration);
-      const strike = Math.sin(Math.sqrt(swingProgress) * Math.PI);
-      const lift = Math.sin(swingProgress * Math.PI);
+      swingProgress = Math.min(1, swingProgress + dt / view.swingDuration);
+      const frame = motion.sample(swingProgress);
+      const strike = frame.inward;
       // Put the eyes slightly ahead of the chest, so looking down reveals legs
       // instead of filling the view with the top of the torso.
       body.position.set(
@@ -97,24 +136,24 @@ export function createPlayerBody(
       body.rotation.y = yaw;
       legs[0].rotation.x = airborne ? -0.23 : swing;
       legs[1].rotation.x = airborne ? 0.23 : -swing;
-      arms[0].rotation.x = -swing * 0.7;
+      arms[0].rotation.x = -swing * bodyArm.walkSwing;
       arms[1].rotation.set(
-        swing * 0.7 + strike * 1.35,
-        -strike * 0.15,
-        -strike * 0.25,
+        swing * bodyArm.walkSwing + strike * bodyArm.swingRotation.x,
+        strike * bodyArm.swingRotation.y,
+        strike * bodyArm.swingRotation.z,
       );
-      hand.visible = !showBody || pitch > -0.62;
-      hand.position.set(
-        Math.min(0.32, camera.aspect * 0.25) +
-          (moving ? Math.sin(gait) * 0.012 : 0) - strike * 0.33,
-        -0.43 + (moving ? Math.cos(gait * 2) * 0.012 : 0) + lift * 0.15,
-        -0.67 - strike * 0.18,
+      hand.visible = !showBody || pitch > ARM_CONFIG.lookDownPitch;
+      // Stable elbow pivot + camera-space rotational sweep + small secondary motion.
+      hand.position.copy(motion.idlePivot);
+      const bob = bobWeight * (1 - strike * view.walkBob.swingAttenuation);
+      movementBob.position.set(
+        bob * Math.sin(gait) * view.walkBob.amplitude.x,
+        bob * Math.cos(gait * 2) * view.walkBob.amplitude.y,
+        0,
       );
-      hand.rotation.set(
-        -0.3 - strike * 0.95,
-        -strike * 0.4,
-        -0.18 + (moving ? Math.sin(gait) * 0.025 : 0) + strike * 0.55,
-      );
+      movementBob.rotation.z = bob * Math.sin(gait) * view.walkBob.amplitude.roll;
+      swingPose.position.copy(frame.translation);
+      swingPose.quaternion.copy(frame.rotation);
       // The matching world arm is visible when looking down at the body.
       arms[1].visible = !hand.visible;
     },
@@ -127,6 +166,8 @@ export function createPlayerBody(
       hand.traverse((o) => {
         if (o instanceof THREE.Mesh) o.geometry.dispose();
       });
+      armMaterials.forEach((surface) => surface.dispose());
+      viewMaterials.forEach((surface) => surface.dispose());
     },
   };
 }

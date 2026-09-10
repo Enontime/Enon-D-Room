@@ -642,6 +642,16 @@ kbd {
   border-radius: 0;
   background: #f4efd6;
 }
+.workstation-persistent-pane[data-active='false'] {
+  display: none;
+}
+.workstation-tool-heading {
+  padding: 12px 16px 0;
+  background: #172d26;
+  color: #a4cd8c;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+}
 .terminal-content {
   background: #172d26;
   color: #cfe5c4;

@@ -15,7 +15,7 @@ import {
   DialogDescription,
   DialogClose,
 } from '@/components/ui/dialog';
-import { TerminalApp } from '@/components/apps/terminal';
+import { WorkstationApp } from '@/components/apps/workstation';
 import { NotesApp } from '@/components/apps/notes';
 import { TelevisionApp } from '@/components/apps/television';
 import { CubeApp } from '@/components/apps/cube';
@@ -33,6 +33,7 @@ export default function HomePage() {
     [error, setError] = useState('');
   const [nearby, setNearby] = useState<ObjectId | null>(null);
   const [active, setActive] = useState<ObjectId | 'help' | null>(null);
+  const [workstationStarted, setWorkstationStarted] = useState(false);
   const [night, setNight] = useState(false),
     [walking, setWalking] = useState(false);
   const [mode, setMode] = useState<ControlMode>('idle'),
@@ -47,6 +48,7 @@ export default function HomePage() {
     if (id === 'light') setNight((value) => !value);
     else {
       world.current?.setPaused(true);
+      if (id === 'terminal') setWorkstationStarted(true);
       setActive(id);
       if (id === 'profile')
         window.open(PROFILE_URL, '_blank', 'noopener,noreferrer');
@@ -315,6 +317,7 @@ export default function HomePage() {
         }}
       >
         <DialogContent
+          keepMounted={workstationStarted}
           className={`application-window ${active === 'terminal' ? 'terminal-window' : ''} ${active === 'tv' || active === 'cube' ? 'play-window' : ''}`}
           showCloseButton={false}
         >
@@ -323,7 +326,7 @@ export default function HomePage() {
               <span className="window-square" />
               <DialogTitle>
                 {active === 'terminal'
-                  ? 'TERMINAL / 本地终端'
+                  ? 'WORKSTATION / 工作台'
                   : active === 'notes'
                     ? 'NOTEBOOK / 随手记'
                     : active === 'tv'
@@ -344,7 +347,7 @@ export default function HomePage() {
           </div>
           <DialogDescription className="sr-only">
             {active === 'terminal'
-              ? '连接本机 PowerShell 的交互式终端。'
+              ? '连接本机 PowerShell 的工作台，返回房间后终端和任务继续运行。'
               : active === 'notes'
                 ? '在这台设备保存你的想法。'
                 : active === 'tv'
@@ -356,7 +359,16 @@ export default function HomePage() {
                       : '探索房间的操作方式和第一人称显示设置。'}
             按 Escape 返回房间。
           </DialogDescription>
-          {active === 'terminal' && <TerminalApp />}
+          {workstationStarted && (
+            <div
+              className="workstation-persistent-pane"
+              data-active={active === 'terminal'}
+              aria-hidden={active !== 'terminal'}
+              inert={active !== 'terminal'}
+            >
+              <WorkstationApp active={active === 'terminal'} />
+            </div>
+          )}
           {active === 'notes' && <NotesApp />}
           {active === 'tv' && <TelevisionApp />}
           {active === 'cube' && <CubeApp />}

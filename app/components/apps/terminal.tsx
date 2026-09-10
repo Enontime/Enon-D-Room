@@ -2,11 +2,18 @@
 import { useEffect, useRef, useState } from 'react';
 import '@xterm/xterm/css/xterm.css';
 
-export function TerminalApp() {
+export function TerminalApp({ active }: { active: boolean }) {
   const host = useRef<HTMLDivElement>(null);
+  const activeRef = useRef(active);
+  const visibilityChanged = useRef<((visible: boolean) => void) | null>(null);
   const [status, setStatus] = useState('正在连接本地终端…');
   const [failed, setFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
+  // Visibility never owns the connection. Reopening only refits and focuses it.
+  useEffect(() => {
+    activeRef.current = active;
+    visibilityChanged.current?.(active);
+  }, [active]);
   useEffect(() => {
     let disposed = false;
     let cleanup = () => {};
@@ -40,7 +47,6 @@ export function TerminalApp() {
       const fit = new FitAddon();
       term.loadAddon(fit);
       term.open(host.current);
-      fit.fit();
       term.writeln(
         '\x1b[38;2;164;205;140mENON HOME / LOCAL TERMINAL\x1b[0m\r\n',
       );
@@ -50,10 +56,16 @@ export function TerminalApp() {
           socket.send(JSON.stringify({ type: 'input', data }));
       });
       let resizeFrame = 0;
-      const resize = new ResizeObserver(() => {
+      let focusAfterFit = false;
+      const scheduleFit = (focus = false) => {
+        if (disposed || !activeRef.current) return;
+        focusAfterFit ||= focus;
         cancelAnimationFrame(resizeFrame);
         resizeFrame = requestAnimationFrame(() => {
-          if (disposed) return;
+          // The pane may have closed between scheduling and this frame, or the
+          // dialog may not have completed layout yet. Never resize a hidden PTY.
+          if (disposed || !activeRef.current || !host.current?.clientWidth ||
+              !host.current.clientHeight) return;
           fit.fit();
           if (socket?.readyState === WebSocket.OPEN)
             socket.send(
@@ -63,10 +75,28 @@ export function TerminalApp() {
                 rows: term.rows,
               }),
             );
+          if (focusAfterFit) {
+            focusAfterFit = false;
+            term.focus();
+          }
         });
+      };
+      visibilityChanged.current = (visible) => {
+        if (visible) scheduleFit(true);
+        else {
+          cancelAnimationFrame(resizeFrame);
+          focusAfterFit = false;
+          term.blur();
+        }
+      };
+      const resize = new ResizeObserver(() => {
+        if (!activeRef.current) return;
+        scheduleFit();
       });
       resize.observe(host.current);
+      scheduleFit(true);
       cleanup = () => {
+        visibilityChanged.current = null;
         cancelAnimationFrame(resizeFrame);
         resize.disconnect();
         input.dispose();
@@ -86,11 +116,7 @@ export function TerminalApp() {
       socket.onopen = () => {
         if (disposed) return;
         setStatus('已连接 · PowerShell');
-        fit.fit();
-        socket?.send(
-          JSON.stringify({ type: 'resize', cols: term.cols, rows: term.rows }),
-        );
-        term.focus();
+        scheduleFit(true);
       };
       socket.onmessage = (event) => {
         if (disposed) return;
